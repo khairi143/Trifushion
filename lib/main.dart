@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'login_page.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Add this line
+  WidgetsFlutterBinding.ensureInitialized(); 
   await Firebase.initializeApp();
   runApp(const MyApp());
 }

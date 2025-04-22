@@ -1,7 +1,32 @@
-import 'package:flutter/material.dart';
+import 'dart:developer';
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'admin_signup.dart';
+import 'admin_home.dart';
+import 'user_home.dart';
+import 'usersignuppage.dart';
+import 'auth_services.dart';
+
+
+
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _auth = AuthService();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,17 +38,16 @@ class LoginPage extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/image/background.png'),
+                image: AssetImage('assets/background.png'),
                 fit: BoxFit.cover,
                 alignment: Alignment.centerLeft,
               ),
             ),
           ),
-          // Semi-transparent overlay
           Container(
             color: Color(0xFFD3BB).withOpacity(0.3),
           ),
-          // Content
+
           Center(
             child: Padding(
               padding:
@@ -33,12 +57,11 @@ class LoginPage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // UTMRunify Title
                     RichText(
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: 'UTM',
+                            text: 'TRIFUSHION',
                             style: TextStyle(
                               color: Color(0xFF870C14),
                               fontSize: 40,
@@ -46,7 +69,7 @@ class LoginPage extends StatelessWidget {
                             ),
                           ),
                           TextSpan(
-                            text: 'RUNIFY',
+                            text: 'IBites',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 40,
@@ -142,14 +165,14 @@ class LoginPage extends StatelessWidget {
                           PageRouteBuilder(
                             pageBuilder:
                                 (context, animation, secondaryAnimation) =>
-                                    OrganiserSignUpPage(),
+                                    AdminSignup(),
                             transitionDuration: Duration.zero,
                             reverseTransitionDuration: Duration.zero,
                           ),
                         );
                       },
                       child: Text(
-                        "Sign Up as Organiser",
+                        "Sign Up as Admin",
                         style: TextStyle(
                           color: Colors.white,
                           decoration: TextDecoration.underline,
@@ -193,5 +216,57 @@ class LoginPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  goToAdminHomePage(BuildContext context) => Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              AdminHome(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+
+  goToUserHomePage(BuildContext context) => Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => UserHome(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+
+  _login() async {
+    final user =
+        await _auth.loginUserWithEmailAndPassword(_email.text, _password.text);
+    if (user != null) {
+      String userId = user!.uid;
+
+      // Fetch user document from Firestore
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        String userType = userDoc['usertype'];
+
+        if (userType == 'admin') {
+          goToAdminHomePage(context);
+        } else if (userType == 'user') {
+          goToUserHomePage(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid user type')),
+          );
+        }
+      } else {
+        log("User document does not exist");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not found in database')),
+        );
+      }
+    }
   }
 }
