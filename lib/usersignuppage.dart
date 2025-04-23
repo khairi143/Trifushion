@@ -2,11 +2,8 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'main.dart';
-
-import 'auth_services.dart';
-import 'user_home.dart';
+import 'userhomepage.dart';
+import 'auth_service.dart';
 
 class UserSignUpPage extends StatefulWidget {
   @override
@@ -14,7 +11,7 @@ class UserSignUpPage extends StatefulWidget {
 }
 
 class _UserSignUpState extends State<UserSignUpPage> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>(); // Add form key
   final _auth = AuthService();
 
   final _fullname = TextEditingController();
@@ -59,10 +56,7 @@ class _UserSignUpState extends State<UserSignUpPage> {
                   SizedBox(height: 15),
                   Text(
                     "User Details",
-                    style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 4),
                   Divider(color: Color(0xFF870C14), thickness: 2),
@@ -82,7 +76,7 @@ class _UserSignUpState extends State<UserSignUpPage> {
 
                   SizedBox(height: 16),
 
-                  //Gender
+                  // Gender
                   DropdownButtonFormField<String>(
                     value: _selectedGender,
                     onChanged: (value) {
@@ -92,9 +86,9 @@ class _UserSignUpState extends State<UserSignUpPage> {
                     },
                     items: ['Male', 'Female', 'Other']
                         .map((gender) => DropdownMenuItem<String>(
-                              value: gender,
-                              child: Text(gender),
-                            ))
+                      value: gender,
+                      child: Text(gender),
+                    ))
                         .toList(),
                     decoration: InputDecoration(labelText: 'Gender'),
                     validator: (value) {
@@ -225,7 +219,7 @@ class _UserSignUpState extends State<UserSignUpPage> {
                       ),
                       Expanded(
                         child: Text(
-                          "I have read and agreed to abide by the rules & regulations of the Ibites",
+                          "I have read and agreed to abide by the rules & regulations",
                           style: TextStyle(fontSize: 14),
                         ),
                       ),
@@ -240,15 +234,13 @@ class _UserSignUpState extends State<UserSignUpPage> {
                       onPressed: _signup,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF870C14),
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         textStyle: TextStyle(fontSize: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Text("Sign Up",
-                          style: TextStyle(color: Colors.white)),
+                      child: Text("Sign Up", style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
@@ -265,8 +257,7 @@ class _UserSignUpState extends State<UserSignUpPage> {
   _signup() async {
     if (_formKey.currentState!.validate()) {
       if (_isChecked) {
-        final user = await _auth.createUserWithEmailAndPassword(
-            _email.text, _password.text);
+        final user = await _auth.createUserWithEmailAndPassword(_email.text, _password.text);
 
         if (user != null) {
           userID = user.uid;
@@ -277,8 +268,7 @@ class _UserSignUpState extends State<UserSignUpPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Please agree to the Terms and Conditions to sign up.'),
+            content: Text('Please agree to the Terms and Conditions to sign up.'),
             backgroundColor: Color(0xFF870C14),
           ),
         );
@@ -307,10 +297,11 @@ class _UserSignUpState extends State<UserSignUpPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => UserHome(),
+        pageBuilder: (context, animation, secondaryAnimation) => UserHomePage(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
     );
   }
 }
+

@@ -1,14 +1,11 @@
 import 'dart:developer';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'admin_signup.dart';
-import 'admin_home.dart';
-import 'user_home.dart';
+import 'adminsignuppage.dart';
+import 'adminHomePage.dart';
 import 'usersignuppage.dart';
-import 'auth_services.dart';
-
-
+import 'auth_service.dart';
+import 'userhomepage.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -47,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
           Container(
             color: Color(0xFFD3BB).withOpacity(0.3),
           ),
-
+          // Content
           Center(
             child: Padding(
               padding:
@@ -57,11 +54,12 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    //Title
                     RichText(
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: 'TRIFUSHION',
+                            text: 'EAT',
                             style: TextStyle(
                               color: Color(0xFF870C14),
                               fontSize: 40,
@@ -83,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                         size: 100.0, color: Colors.white),
                     Spacer(),
 
-                    // Email text field
+                    // Email
                     TextFormField(
                       decoration: InputDecoration(
                         filled: true,
@@ -108,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 15),
 
-                    // Password text field
+                    // Password
                     TextFormField(
                       obscureText: true,
                       decoration: InputDecoration(
@@ -165,7 +163,7 @@ class _LoginPageState extends State<LoginPage> {
                           PageRouteBuilder(
                             pageBuilder:
                                 (context, animation, secondaryAnimation) =>
-                                    AdminSignup(),
+                                    AdminSignUpPage(),
                             transitionDuration: Duration.zero,
                             reverseTransitionDuration: Duration.zero,
                           ),
@@ -222,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
         context,
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              AdminHome(),
+              AdminHomePage(),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -231,7 +229,7 @@ class _LoginPageState extends State<LoginPage> {
   goToUserHomePage(BuildContext context) => Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => UserHome(),
+          pageBuilder: (context, animation, secondaryAnimation) => UserHomePage(),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -241,7 +239,7 @@ class _LoginPageState extends State<LoginPage> {
     final user =
         await _auth.loginUserWithEmailAndPassword(_email.text, _password.text);
     if (user != null) {
-      String userId = user!.uid;
+      String userId = user.uid;
 
       // Fetch user document from Firestore
       DocumentSnapshot userDoc = await FirebaseFirestore.instance

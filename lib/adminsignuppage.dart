@@ -2,23 +2,23 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'main.dart';
-import 'admin_home.dart';
+import 'adminHomePage.dart';
 
-import 'auth_services.dart';
+import 'auth_service.dart';
 
-class AdminSignup extends StatefulWidget {
+class AdminSignUpPage extends StatefulWidget {
   @override
   _AdminSignUpState createState() => _AdminSignUpState();
 }
 
-class _AdminSignUpState extends State<AdminSignup> {
+class _AdminSignUpState extends State<AdminSignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final _auth = AuthService();
 
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _contactno = TextEditingController();
   final _confirmpassword = TextEditingController();
 
   bool _isChecked = false;
@@ -30,6 +30,7 @@ class _AdminSignUpState extends State<AdminSignup> {
     _name.dispose();
     _email.dispose();
     _password.dispose();
+    _contactno.dispose();
     _confirmpassword.dispose();
   }
 
@@ -64,7 +65,7 @@ class _AdminSignUpState extends State<AdminSignup> {
                   ),
                   SizedBox(height: 15),
 
-                  // Admin Name
+                  //Name
                   TextFormField(
                     controller: _name,
                     decoration: InputDecoration(labelText: 'Admin Name'),
@@ -75,6 +76,7 @@ class _AdminSignUpState extends State<AdminSignup> {
                       return null;
                     },
                   ),
+
                   SizedBox(height: 16),
 
                   // Email
@@ -94,6 +96,22 @@ class _AdminSignUpState extends State<AdminSignup> {
                   ),
 
                   SizedBox(height: 16),
+
+                  // Contact Number
+                  TextFormField(
+                    controller: _contactno,
+                    decoration: InputDecoration(labelText: 'Contact Number'),
+                    keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Contact number is required';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  SizedBox(height: 16),
+
                   // Password
                   TextFormField(
                     controller: _password,
@@ -143,7 +161,7 @@ class _AdminSignUpState extends State<AdminSignup> {
                       ),
                       Expanded(
                         child: Text(
-                          "I have read and agreed to abide by the rules & regulations of Ibites",
+                          "I have read and agreed to abide by the rules & regulations",
                           style: TextStyle(fontSize: 14),
                         ),
                       ),
@@ -206,6 +224,7 @@ class _AdminSignUpState extends State<AdminSignup> {
     try {
       FirebaseFirestore.instance.collection("users").doc(userID).set({
         "email": _email.text.trim(),
+        "contactno": _contactno.text.trim(),
         "name": _name.text.trim(),
         "userID": userID,
         "usertype": "admin"
@@ -219,7 +238,7 @@ class _AdminSignUpState extends State<AdminSignup> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => AdminHome(),
+        pageBuilder: (context, animation, secondaryAnimation) => AdminHomePage(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
