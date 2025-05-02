@@ -41,7 +41,7 @@ class AuthWrapper extends StatelessWidget {
           return const MainPage();
         }
         // 3. User is NOT logged in
-        return const LoginPage();
+        return LoginPage();
       },
     );
   }
