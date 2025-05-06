@@ -21,12 +21,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'iBites',
-      home: AuthWrapper(),
+      home: LoginPage(),
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+/*class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -45,4 +45,4 @@ class AuthWrapper extends StatelessWidget {
       },
     );
   }
-}
+}*/
