@@ -2,43 +2,47 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'adminHomePage.dart';
+import 'userhomepage.dart';
+import '../service/auth_service.dart';
 
-import 'auth_service.dart';
-
-class AdminSignUpPage extends StatefulWidget {
+class UserSignUpPage extends StatefulWidget {
   @override
-  _AdminSignUpState createState() => _AdminSignUpState();
+  _UserSignUpState createState() => _UserSignUpState();
 }
 
-class _AdminSignUpState extends State<AdminSignUpPage> {
-  final _formKey = GlobalKey<FormState>();
+class _UserSignUpState extends State<UserSignUpPage> {
+  final _formKey = GlobalKey<FormState>(); // Add form key
   final _auth = AuthService();
 
-  final _name = TextEditingController();
+  final _fullname = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _contactno = TextEditingController();
   final _confirmpassword = TextEditingController();
+  final _height = TextEditingController();
+  final _weight = TextEditingController();
 
-  bool _isChecked = false;
+  String? _selectedGender;
   String? userID;
+  bool _isChecked = false;
 
   @override
   void dispose() {
     super.dispose();
-    _name.dispose();
+    _fullname.dispose();
     _email.dispose();
     _password.dispose();
     _contactno.dispose();
     _confirmpassword.dispose();
+    _height.dispose();
+    _weight.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Signup'),
+        title: const Text('User Signup'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -51,27 +55,81 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
                 children: [
                   SizedBox(height: 15),
                   Text(
-                    "Admin Details",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    "User Details",
+                    style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 4),
-                  Divider(
-                    color: Color(0xFF870C14),
-                    thickness: 2,
-                  ),
+                  Divider(color: Color(0xFF870C14), thickness: 2),
                   SizedBox(height: 15),
 
                   //Name
                   TextFormField(
-                    controller: _name,
-                    decoration: InputDecoration(labelText: 'Admin Name'),
+                    controller: _fullname,
+                    decoration: InputDecoration(labelText: 'Full Name'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Admin name is required';
+                        return 'Full name is required';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Gender
+                  DropdownButtonFormField<String>(
+                    value: _selectedGender,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedGender = value;
+                      });
+                    },
+                    items: ['Male', 'Female', 'Other']
+                        .map((gender) => DropdownMenuItem<String>(
+                      value: gender,
+                      child: Text(gender),
+                    ))
+                        .toList(),
+                    decoration: InputDecoration(labelText: 'Gender'),
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Gender is required';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Height
+                  TextFormField(
+                    controller: _height,
+                    decoration: InputDecoration(labelText: 'Height (cm)'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Height is required';
+                      }
+                      if (double.tryParse(value) == null) {
+                        return 'Enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Weight
+                  TextFormField(
+                    controller: _weight,
+                    decoration: InputDecoration(labelText: 'Weight (kg)'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Weight is required';
+                      }
+                      if (double.tryParse(value) == null) {
+                        return 'Enter a valid number';
                       }
                       return null;
                     },
@@ -167,8 +225,6 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
                       ),
                     ],
                   ),
-
-
                   SizedBox(height: 20),
 
                   // Sign Up Button
@@ -198,7 +254,7 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
     );
   }
 
-  void _signup() async {
+  _signup() async {
     if (_formKey.currentState!.validate()) {
       if (_isChecked) {
         final user = await _auth.createUserWithEmailAndPassword(_email.text, _password.text);
@@ -225,9 +281,12 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
       FirebaseFirestore.instance.collection("users").doc(userID).set({
         "email": _email.text.trim(),
         "contactno": _contactno.text.trim(),
-        "name": _name.text.trim(),
+        "height": _height.text.trim(),
+        "weight": _weight.text.trim(),
+        "gender": _selectedGender,
+        "name": _fullname.text.trim(),
         "userID": userID,
-        "usertype": "admin"
+        "usertype": "user"
       });
     } catch (e) {
       print(e);
@@ -238,10 +297,11 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => AdminHomePage(),
+        pageBuilder: (context, animation, secondaryAnimation) => UserHomePage(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
     );
   }
 }
+

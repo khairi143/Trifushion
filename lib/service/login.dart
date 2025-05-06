@@ -1,11 +1,11 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'adminsignuppage.dart';
-import 'adminHomePage.dart';
-import 'usersignuppage.dart';
+import '../admin/adminsignuppage.dart';
+import '../admin/adminHomePage.dart';
+import '../user/usersignuppage.dart';
 import 'auth_service.dart';
-import 'userhomepage.dart';
+import '../user/userhomepage.dart';
 
 class LoginPage extends StatefulWidget {
   @override

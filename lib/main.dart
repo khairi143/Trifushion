@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
-import 'login.dart'; // your login screen
+import 'service/login.dart'; // your login screen
 import 'main_page.dart'; // your main/home screen after login
 
 void main() async {
