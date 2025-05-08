@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'adminprofilepage.dart';
+import 'userManagementPage.dart';
 
 class AdminHomePage extends StatelessWidget {
   @override
@@ -19,7 +20,8 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    AdminHomePage(),
+    AdminHomeContent(),
+    UserManagementPage(),
     AdminProfilePage(),
   ];
 
@@ -27,12 +29,12 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home'),
+        title: Text('Admin Control Panel'),
       ),
 
       // Body content based on current index
       body: _pages[_currentIndex],
-      
+
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
@@ -47,11 +49,24 @@ class _HomePageState extends State<HomePage> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'User Management',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Account',
           ),
         ],
       ),
+    );
+  }
+}
+
+class AdminHomeContent extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('Admin Home', style: TextStyle(fontSize: 24)),
     );
   }
 }

@@ -227,7 +227,8 @@ class _LoginPageState extends State<LoginPage> {
   goToUserHomePage(BuildContext context) => Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => UserHomePage(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              UserHomePage(),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -246,7 +247,23 @@ class _LoginPageState extends State<LoginPage> {
           .get();
 
       if (userDoc.exists) {
-        String userType = userDoc['usertype'];
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+        String userType = userData['usertype'];
+
+        // Check if user is disabled
+        bool isActive = userData['isActive'] ?? true;
+        if (!isActive && userType == 'user') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Your account has been disabled by an administrator. Please contact admin for assistance.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          // Log out user
+          await _auth.signout();
+          return;
+        }
 
         if (userType == 'admin') {
           goToAdminHomePage(context);

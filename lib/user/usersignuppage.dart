@@ -56,7 +56,10 @@ class _UserSignUpState extends State<UserSignUpPage> {
                   SizedBox(height: 15),
                   Text(
                     "User Details",
-                    style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 4),
                   Divider(color: Color(0xFF870C14), thickness: 2),
@@ -86,9 +89,9 @@ class _UserSignUpState extends State<UserSignUpPage> {
                     },
                     items: ['Male', 'Female', 'Other']
                         .map((gender) => DropdownMenuItem<String>(
-                      value: gender,
-                      child: Text(gender),
-                    ))
+                              value: gender,
+                              child: Text(gender),
+                            ))
                         .toList(),
                     decoration: InputDecoration(labelText: 'Gender'),
                     validator: (value) {
@@ -234,13 +237,15 @@ class _UserSignUpState extends State<UserSignUpPage> {
                       onPressed: _signup,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF870C14),
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         textStyle: TextStyle(fontSize: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Text("Sign Up", style: TextStyle(color: Colors.white)),
+                      child: Text("Sign Up",
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
@@ -257,7 +262,8 @@ class _UserSignUpState extends State<UserSignUpPage> {
   _signup() async {
     if (_formKey.currentState!.validate()) {
       if (_isChecked) {
-        final user = await _auth.createUserWithEmailAndPassword(_email.text, _password.text);
+        final user = await _auth.createUserWithEmailAndPassword(
+            _email.text, _password.text);
 
         if (user != null) {
           userID = user.uid;
@@ -268,7 +274,8 @@ class _UserSignUpState extends State<UserSignUpPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please agree to the Terms and Conditions to sign up.'),
+            content:
+                Text('Please agree to the Terms and Conditions to sign up.'),
             backgroundColor: Color(0xFF870C14),
           ),
         );
@@ -286,7 +293,8 @@ class _UserSignUpState extends State<UserSignUpPage> {
         "gender": _selectedGender,
         "name": _fullname.text.trim(),
         "userID": userID,
-        "usertype": "user"
+        "usertype": "user",
+        "isActive": true
       });
     } catch (e) {
       print(e);
@@ -304,4 +312,3 @@ class _UserSignUpState extends State<UserSignUpPage> {
     );
   }
 }
-
