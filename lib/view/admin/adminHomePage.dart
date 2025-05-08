@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../service/auth_service.dart';
-import '../service/login.dart';
+import '../../services/auth_service.dart';
+import '../login.dart';
 import 'adminprofilepage.dart';
 
 class AdminHomePage extends StatelessWidget {

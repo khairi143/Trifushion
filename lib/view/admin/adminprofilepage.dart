@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../service/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class AdminProfilePage extends StatefulWidget {
   const AdminProfilePage({super.key});

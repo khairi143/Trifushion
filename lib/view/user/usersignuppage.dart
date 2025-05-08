@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'userhomepage.dart';
-import '../service/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class UserSignUpPage extends StatefulWidget {
   @override

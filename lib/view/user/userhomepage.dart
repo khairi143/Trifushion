@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../service/auth_service.dart';
-import '../service/login.dart'; // 导入LoginPage
+import '../../services/auth_service.dart';
+import '../login.dart'; // 导入LoginPage
 import 'userprofilepage.dart';
 
 class UserHomePage extends StatefulWidget {

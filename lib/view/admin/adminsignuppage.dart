@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'adminHomePage.dart';
 
-import '../service/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class AdminSignUpPage extends StatefulWidget {
   @override
