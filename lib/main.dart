@@ -1,9 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
-import 'login.dart'; // your login screen
+import 'loginpage.dart'; // your login screen
 import 'main_page.dart'; // your main/home screen after login
 
 void main() async {
@@ -20,6 +21,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 128, 0, 53)),
+        useMaterial3: true,
+      ),
       title: 'iBites',
       home: AuthWrapper(),
     );
@@ -36,14 +43,14 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
         // 1. Waiting for connection
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
         // 2. User is logged in
         if (snapshot.hasData) {
-          return const MainPage();
+          return MainPage();
         }
         // 3. User is NOT logged in
-        return const LoginPage();
+        return LoginPage();
       },
     );
   }
