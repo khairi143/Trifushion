@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'adminprofilepage.dart';
 import 'userManagementPage.dart';
+import '../service/auth_service.dart';
+import '../service/login.dart';
 
 class AdminHomePage extends StatelessWidget {
   @override
@@ -18,6 +20,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+  final _auth = AuthService();
 
   final List<Widget> _pages = [
     AdminHomeContent(),
@@ -25,11 +28,57 @@ class _HomePageState extends State<HomePage> {
     AdminProfilePage(),
   ];
 
+  // Logout function
+  void _logout(BuildContext context) async {
+    // Show confirmation dialog
+    bool confirmLogout = await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Logout Confirmation'),
+              content: Text('Are you sure you want to log out?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text('Logout'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    // If confirmed, log out and navigate to login page
+    if (confirmLogout) {
+      await _auth.signout();
+      // Navigate to login page and remove all previous routes
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Admin Control Panel'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () => _logout(context),
+          ),
+        ],
       ),
 
       // Body content based on current index

@@ -19,6 +19,21 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Clear the text fields when login page is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _clearCredentials();
+    });
+  }
+
+  // Clear login credentials
+  void _clearCredentials() {
+    _email.clear();
+    _password.clear();
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
@@ -214,24 +229,16 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  goToAdminHomePage(BuildContext context) => Navigator.push(
+  goToAdminHomePage(BuildContext context) => Navigator.pushAndRemoveUntil(
         context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              AdminHomePage(),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
+        MaterialPageRoute(builder: (context) => AdminHomePage()),
+        (route) => false,
       );
 
-  goToUserHomePage(BuildContext context) => Navigator.push(
+  goToUserHomePage(BuildContext context) => Navigator.pushAndRemoveUntil(
         context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              UserHomePage(),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
+        MaterialPageRoute(builder: (context) => UserHomePage()),
+        (route) => false,
       );
 
   _login() async {

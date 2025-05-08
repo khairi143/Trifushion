@@ -99,6 +99,62 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 
+  // Show user details dialog
+  void _showUserDetails(Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('User Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Name', user['name'] ?? 'Not provided'),
+                _buildDetailRow('Email', user['email'] ?? 'Not provided'),
+                _buildDetailRow('Contact', user['contactno'] ?? 'Not provided'),
+                _buildDetailRow('Gender', user['gender'] ?? 'Not provided'),
+                _buildDetailRow(
+                    'Height', '${user['height'] ?? 'Not provided'} cm'),
+                _buildDetailRow(
+                    'Weight', '${user['weight'] ?? 'Not provided'} kg'),
+                _buildDetailRow(
+                    'Status', user['isActive'] == true ? 'Active' : 'Disabled'),
+                _buildDetailRow('User ID', user['id'] ?? 'Not provided'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Helper to build detail rows
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,17 +187,24 @@ class _UserManagementPageState extends State<UserManagementPage> {
                         itemBuilder: (context, index) {
                           final user = _filteredUsers[index];
                           final bool isActive = user['isActive'] ?? true;
+                          final String userName =
+                              user['name'] ?? 'Unknown User';
+                          final String firstLetter = userName.isNotEmpty
+                              ? userName.substring(0, 1)
+                              : '?';
 
                           return Card(
                             margin: EdgeInsets.symmetric(
                                 horizontal: 16.0, vertical: 8.0),
                             child: ListTile(
                               leading: CircleAvatar(
-                                child:
-                                    Text(user['name']?.substring(0, 1) ?? '?'),
+                                child: Text(firstLetter),
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
                               ),
-                              title: Text(user['name'] ?? 'Unknown User'),
+                              title: Text(userName),
                               subtitle: Text(user['email'] ?? 'No Email'),
+                              onTap: () => _showUserDetails(user),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

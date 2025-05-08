@@ -239,14 +239,15 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
   }
 
   void goToHome(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            AdminHomePage(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Admin registration successful! Please log in with your credentials.'),
+        backgroundColor: Colors.green,
       ),
     );
+
+    // Go back to the login page
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 }
