@@ -168,7 +168,6 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
                     ],
                   ),
 
-
                   SizedBox(height: 20),
 
                   // Sign Up Button
@@ -178,13 +177,15 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
                       onPressed: _signup,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF870C14),
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         textStyle: TextStyle(fontSize: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Text("Sign Up", style: TextStyle(color: Colors.white)),
+                      child: Text("Sign Up",
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
@@ -201,7 +202,8 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
   void _signup() async {
     if (_formKey.currentState!.validate()) {
       if (_isChecked) {
-        final user = await _auth.createUserWithEmailAndPassword(_email.text, _password.text);
+        final user = await _auth.createUserWithEmailAndPassword(
+            _email.text, _password.text);
 
         if (user != null) {
           userID = user.uid;
@@ -212,7 +214,8 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please agree to the Terms and Conditions to sign up.'),
+            content:
+                Text('Please agree to the Terms and Conditions to sign up.'),
             backgroundColor: Color(0xFF870C14),
           ),
         );
@@ -225,9 +228,10 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
       FirebaseFirestore.instance.collection("users").doc(userID).set({
         "email": _email.text.trim(),
         "contactno": _contactno.text.trim(),
-        "name": _name.text.trim(),
+        "fullname": _name.text.trim(),
         "userID": userID,
-        "usertype": "admin"
+        "usertype": "admin",
+        "isBanned": false
       });
     } catch (e) {
       print(e);
@@ -235,13 +239,17 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
   }
 
   void goToHome(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => AdminHomePage(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Admin account created successfully! You can now log in with your email.'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 5),
       ),
     );
+
+    // Navigate back to login page
+    Navigator.pop(context);
   }
 }

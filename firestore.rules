@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Check if the user is not banned
+    function isNotBanned() {
+      let userId = request.auth.uid;
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      return !(userDoc.data.isBanned == true);
+    }
+    
+    // Check if the user is an admin
+    function isAdmin() {
+      let userId = request.auth.uid;
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      return userDoc.data.usertype == 'admin';
+    }
+    
+    // User collection security rules
+    match /users/{userId} {
+      // Allow users to read their own data, but not if they are banned
+      allow read: if request.auth.uid == userId && isNotBanned();
+      // Allow admins to read any user's data
+      allow read: if isAdmin();
+      // Only allow users to modify their own data, but not if they are banned
+      allow update: if request.auth.uid == userId && isNotBanned();
+      // Allow admins to modify any user's data
+      allow update, delete: if isAdmin();
+      // Allow creating new users
+      allow create: if true;
+    }
+    
+    // Admin actions records collection security rules
+    match /adminActions/{actionId} {
+      // Only admins can read and write admin action records
+      allow read, write: if isAdmin();
+    }
+    
+    // Security rules for other collections in the application
+    match /{document=**} {
+      // Users must be logged in and not banned to read and write data
+      allow read, write: if request.auth != null && isNotBanned();
+    }
+  }
+} 

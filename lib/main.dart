@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'service/login.dart'; // your login screen
 import 'main_page.dart'; // your main/home screen after login
+import 'service/auth_service.dart'; // for static method
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,8 +20,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Register the clear login info function
+    AuthService.clearLoginInfo = () {
+      // This will be called when user logs out
+      try {
+        LoginPage.resetLoginInfo();
+      } catch (e) {
+        print("Error resetting login info: $e");
+      }
+    };
+
     return MaterialApp(
       title: 'iBites',
+      debugShowCheckedModeBanner: false,
       home: LoginPage(),
     );
   }
