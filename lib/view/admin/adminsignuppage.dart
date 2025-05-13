@@ -202,20 +202,65 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
   void _signup() async {
     if (_formKey.currentState!.validate()) {
       if (_isChecked) {
-        final user = await _auth.createUserWithEmailAndPassword(
-            _email.text, _password.text);
+        try {
+          // Show loading indicator
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF870C14),
+                ),
+              );
+            },
+          );
 
-        if (user != null) {
-          userID = user.uid;
-          log("User created successfully");
-          uploadUserToDb();
-          goToHome(context);
+          final user = await _auth.createUserWithEmailAndPassword(
+              _email.text.trim(), _password.text);
+
+          // Hide loading indicator
+          Navigator.of(context).pop();
+
+          if (user != null) {
+            userID = user.uid;
+            log("User created successfully");
+            await uploadUserToDb();
+            goToHome(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to create account. Please try again.'),
+                backgroundColor: Color(0xFF870C14),
+              ),
+            );
+          }
+        } catch (e) {
+          // Hide loading indicator if it's showing
+          if (Navigator.canPop(context)) {
+            Navigator.of(context).pop();
+          }
+
+          String errorMessage = 'An error occurred during signup.';
+          if (e.toString().contains('email-already-in-use')) {
+            errorMessage = 'This email is already registered.';
+          } else if (e.toString().contains('invalid-email')) {
+            errorMessage = 'Please enter a valid email address.';
+          } else if (e.toString().contains('weak-password')) {
+            errorMessage = 'Password is too weak. Please use a stronger password.';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Color(0xFF870C14),
+            ),
+          );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Please agree to the Terms and Conditions to sign up.'),
+            content: Text('Please agree to the Terms and Conditions to sign up.'),
             backgroundColor: Color(0xFF870C14),
           ),
         );
@@ -223,18 +268,20 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
     }
   }
 
-  void uploadUserToDb() async {
+  Future<void> uploadUserToDb() async {
     try {
-      FirebaseFirestore.instance.collection("users").doc(userID).set({
+      await FirebaseFirestore.instance.collection("users").doc(userID).set({
         "email": _email.text.trim(),
         "contactno": _contactno.text.trim(),
         "fullname": _name.text.trim(),
         "userID": userID,
         "usertype": "admin",
-        "isBanned": false
+        "isBanned": false,
+        "createdAt": FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print(e);
+      log("Error uploading user data: $e");
+      throw e;
     }
   }
 
@@ -243,13 +290,16 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-            'Admin account created successfully! You can now log in with your email.'),
+            'Admin account created successfully! Redirecting to admin dashboard...'),
         backgroundColor: Colors.green,
-        duration: Duration(seconds: 5),
+        duration: Duration(seconds: 3),
       ),
     );
 
-    // Navigate back to login page
-    Navigator.pop(context);
+    // Navigate to AdminHomePage
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => AdminHomePage()),
+    );
   }
 }
