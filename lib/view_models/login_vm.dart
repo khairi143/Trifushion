@@ -37,7 +37,7 @@ class LoginViewModel extends ChangeNotifier {
 
     try {
       final user =
-          await _authService.loginUserWithEmailAndPassword(email!, password!);
+          await _authService.loginUserWithEmailAndPassword(email, password);
       if (user != null) {
         // User logged in successfully
         String userId = user.uid;
