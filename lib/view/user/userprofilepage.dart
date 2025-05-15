@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../services/auth_service.dart';
+import 'edit_profile_page.dart';
+import 'dart:ui';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -10,23 +14,58 @@ class UserProfilePage extends StatefulWidget {
   State<UserProfilePage> createState() => _UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage> {
+class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProviderStateMixin {
   final _auth = AuthService();
   final _formKey = GlobalKey<FormState>();
+  final _imagePicker = ImagePicker();
+  late TabController _tabController;
+  
   TextEditingController _emailController = TextEditingController();
   TextEditingController _weightController = TextEditingController();
   TextEditingController _heightController = TextEditingController();
   TextEditingController _contactController = TextEditingController();
   TextEditingController _fullNameController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
+  
   String? _gender;
   String? userID;
+  File? _profileImage;
+  bool _isEditMode = false;
+  bool _notificationsEnabled = true;
+  bool _darkModeEnabled = false;
+  String _selectedLanguage = 'English';
+  Map<String, dynamic> _userData = {};
+  int _selectedTabIndex = 0;
+  final List<String> _tabs = [
+    'Preferences',
+    'Friends',
+    'General Setting',
+    'About iBites',
+    'Log Out',
+  ];
 
   @override
   void initState() {
     super.initState();
     userID = _auth.getUserID();
+    _tabController = TabController(length: 3, vsync: this);
     _loadProfileData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _profileImage = File(pickedFile.path);
+      });
+      // TODO: Upload image to Firebase Storage
+    }
   }
 
   Future<void> _loadProfileData() async {
@@ -37,21 +76,29 @@ class _UserProfilePageState extends State<UserProfilePage> {
           .get();
 
       if (userDoc.exists) {
-        var data = userDoc.data() as Map<String, dynamic>;
-
-        // Populate the text controllers with fetched data
-        _fullNameController.text = data['name'] ?? '';
-        _emailController.text = data['email'] ?? '';
-        _weightController.text = data['weight'] ?? '';
-        _heightController.text = data['height'] ?? '';
-        _contactController.text = data['contactno'] ?? '';
-        _gender = data['gender'] ?? 'Male';
-      } else {
-        print("User data not found!");
+        setState(() {
+          _userData = userDoc.data() as Map<String, dynamic>;
+        });
       }
     } catch (e) {
       print("Error loading user data: $e");
     }
+  }
+
+  void _navigateToEditProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfilePage(
+          userData: _userData,
+          onProfileUpdated: (updatedData) {
+            setState(() {
+              _userData = updatedData;
+            });
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _submitForm() async {
@@ -62,21 +109,17 @@ class _UserProfilePageState extends State<UserProfilePage> {
           String email = _emailController.text;
           bool updateEmail = false;
 
-          // Re-authenticate the user before updating the email
-          String currentPassword =
-              _passwordController.text; // Get current password from the user
-          AuthCredential credential = EmailAuthProvider.credential(
-            email: user.email!,
-            password: currentPassword,
-          );
-
-          if (email != user.email) {
+          if (email != user.email && _passwordController.text.isNotEmpty) {
+            String currentPassword = _passwordController.text;
+            AuthCredential credential = EmailAuthProvider.credential(
+              email: user.email!,
+              password: currentPassword,
+            );
             await user.reauthenticateWithCredential(credential);
             await user.verifyBeforeUpdateEmail(email);
             updateEmail = true;
           }
 
-          // Update Firestore with new profile data
           await FirebaseFirestore.instance.collection('users').doc(userID).set({
             'email': user.email,
             'weight': _weightController.text,
@@ -86,9 +129,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
             'name': _fullNameController.text,
             'userID': userID,
             'usertype': 'user',
+            'notifications': _notificationsEnabled,
+            'darkMode': _darkModeEnabled,
+            'language': _selectedLanguage,
           });
 
           if (mounted) {
+            setState(() {
+              _isEditMode = false;
+            });
             if (updateEmail) {
               _showDialog(
                   'Your profile has been successfully updated! Please check your new email inbox to verify and confirm the email change.',
@@ -126,194 +175,177 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final String? profileImageUrl = _userData['profileImageUrl'];
+    final String userName = _userData['name'] ?? 'Your Name';
+    final String userEmail = _userData['email'] ?? 'your.email@example.com';
+    final String joinedDate = _userData['joined'] ?? '1 January 2024';
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-
-                // Form for user details
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      //Name
-                      TextFormField(
-                        controller: _fullNameController,
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Full Name',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Full name is required';
-                          }
-                          return null;
-                        },
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 32),
+              // Profile Avatar
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 54,
+                      backgroundColor: Colors.orange.withOpacity(0.15),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.grey[300],
+                        backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                          ? NetworkImage(profileImageUrl)
+                          : null,
+                        child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                          ? Icon(Icons.person, size: 50, color: Colors.grey[600])
+                          : null,
                       ),
-                      const SizedBox(height: 10),
-
-                      // Email
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Email',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Enter a valid email address';
-                          }
-                          return null;
-                        },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                userName,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                userEmail,
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _navigateToEditProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFFF9800),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(height: 10),
-
-                      // Height
-                      TextFormField(
-                        controller: _heightController,
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Height (cm)',
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Height is required';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Enter a valid number';
-                          }
-                          return null;
-                        },
+                      elevation: 2,
+                    ),
+                    child: const Text(
+                      'Edit Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
-                      const SizedBox(height: 10),
-                      // Weight
-                      TextFormField(
-                        controller: _weightController,
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Weight (kg)',
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Weight is required';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Enter a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      // Gender
-                      DropdownButtonFormField<String>(
-                        value: _gender,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _gender = newValue;
-                          });
-                        },
-                        items: <String>['Male', 'Female', 'Other']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Gender',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Gender is required';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Contact Number
-                      TextFormField(
-                        controller: _contactController,
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Contact No.',
-                        ),
-                        keyboardType: TextInputType.phone,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Contact number is required';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Password Field
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(),
-                          labelText: 'Password',
-                        ),
-                        obscureText:
-                            true, // This hides the password as asterisks
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Password is required';
-                          }
-                          if (value.length < 6) {
-                            return 'Password must be at least 6 characters long';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Submit Button
-                      Container(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _submitForm,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF870C14),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                            textStyle: const TextStyle(fontSize: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          child: const Text(
-                            "Update Profile",
-                            style: TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                SizedBox(height: 60),
-              ],
+              ),
+              const SizedBox(height: 28),
+              // Action List
+              ListView(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+                children: [
+                  _buildProfileLink(
+                    icon: Icons.tune,
+                    title: 'Preferences',
+                    color: Color(0xFFFF9800),
+                    onTap: () {
+                      // TODO: Navigate to Preferences page
+                    },
+                  ),
+                  _buildProfileLink(
+                    icon: Icons.people,
+                    title: 'Friends',
+                    color: Color(0xFFFF9800),
+                    onTap: () {
+                      // TODO: Navigate to Friends page
+                    },
+                  ),
+                  _buildProfileLink(
+                    icon: Icons.settings,
+                    title: 'General Setting',
+                    color: Color(0xFFFF9800),
+                    onTap: () {
+                      // TODO: Navigate to General Setting page
+                    },
+                  ),
+                  _buildProfileLink(
+                    icon: Icons.info_outline,
+                    title: 'About iBites',
+                    color: Color(0xFFFF9800),
+                    onTap: () {
+                      // TODO: Navigate to About iBites page
+                    },
+                  ),
+                  _buildProfileLink(
+                    icon: Icons.logout,
+                    title: 'Log Out',
+                    color: Color(0xFFE53935),
+                    onTap: () {
+                      // TODO: Handle log out
+                    },
+                    isLogout: true,
+                  ),
+                ],
+              ),
+              // Joined Date
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18, top: 8),
+                child: Text(
+                  'Joined $joinedDate',
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileLink({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+    bool isLogout = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: color.withOpacity(0.15),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isLogout ? Color(0xFFE53935) : Colors.black,
             ),
           ),
+          trailing: Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 18),
+          onTap: onTap,
         ),
       ),
     );

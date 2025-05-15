@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class LoginViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _mounted = true;
 
   // Controllers and state
   final emailController = TextEditingController();
@@ -16,6 +17,17 @@ class LoginViewModel extends ChangeNotifier {
   VoidCallback? onAdmin;
   VoidCallback? onUser;
   void Function(String reason)? onBanned;
+
+  bool get mounted => _mounted;
+
+  @override
+  void dispose() {
+    _mounted = false;
+    emailController.dispose();
+    passwordController.dispose();
+    errorMessageController.dispose();
+    super.dispose();
+  }
 
   void setEmail(String value) {
     emailController.text = value;
@@ -29,6 +41,8 @@ class LoginViewModel extends ChangeNotifier {
 
   Future<void> login(BuildContext context, VoidCallback? onAdmin,
       VoidCallback? onUser, Function(String) onBanned) async {
+    if (!mounted) return; // Check if the view model is still mounted
+
     isLoading = true;
     String? email = emailController.text;
     String? password = passwordController.text;
@@ -37,13 +51,17 @@ class LoginViewModel extends ChangeNotifier {
 
     try {
       final user =
-          await _authService.loginUserWithEmailAndPassword(email, password);
+          await _authService.loginUserWithEmailAndPassword(email!, password!);
+      if (!mounted) return; // Check if the view model is still mounted
+
       if (user != null) {
         // User logged in successfully
         String userId = user.uid;
 
         // Check if the user is banned
         bool isBanned = await _authService.isUserBanned(userId);
+        if (!mounted) return; // Check if the view model is still mounted
+
         if (isBanned) {
           String reason = await _authService.getBanReason(userId).toString();
           onBanned.call(reason);
@@ -55,6 +73,8 @@ class LoginViewModel extends ChangeNotifier {
             .collection('users')
             .doc(userId)
             .get();
+        if (!mounted) return; // Check if the view model is still mounted
+
         final userType = userDoc['usertype'];
 
         if (userType == 'admin') {
@@ -67,10 +87,14 @@ class LoginViewModel extends ChangeNotifier {
             "Login failed. Please check your credentials.";
       }
     } catch (e) {
+      if (!mounted) return; // Check if the view model is still mounted
       errorMessageController.text = "An error occurred: $e";
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (mounted) {
+        // Only update state if still mounted
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
