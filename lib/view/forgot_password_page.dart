@@ -78,40 +78,45 @@ class ForgotPasswordPage extends StatelessWidget {
                             ),
                           ),
                         SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: viewModel.isLoading
-                                ? null
-                                : () => viewModel.sendResetLink(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  Color.fromARGB(255, 255, 147, 39),
-                              padding: EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.0)),
-                            ),
-                            child: viewModel.isLoading
-                                ? CircularProgressIndicator(
-                                    color: Colors.white,
-                                  )
-                                : Text(
-                                    'Send Reset Link',
-                                    style: TextStyle(
-                                      fontSize: 18,
+                        Center(
+                          child: SizedBox(
+                            width: 150,
+                            child: ElevatedButton(
+                              onPressed: viewModel.isLoading
+                                  ? null
+                                  : () => viewModel.sendResetLink(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    Color.fromARGB(255, 255, 147, 39),
+                                padding: EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15.0)),
+                              ),
+                              child: viewModel.isLoading
+                                  ? CircularProgressIndicator(
                                       color: Colors.white,
+                                    )
+                                  : Text(
+                                      'Send Reset Link',
+                                      style: TextStyle(
+                                          fontFamily: 'Norwester',
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500),
                                     ),
-                                  ),
+                            ),
                           ),
                         ),
                         SizedBox(height: 20),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            'Back to Login',
-                            style: TextStyle(
-                              color: Color(0xFF870C14),
-                              fontSize: 16,
+                        Center(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'Back to Login',
+                              style: TextStyle(
+                                color: Color(0xFF870C14),
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
