@@ -38,6 +38,7 @@ dependencies:
   cloud_firestore: ^5.6.6
   firebase_auth: ^5.5.2
   provider: ^6.1.5
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:
@@ -63,7 +64,18 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-   - assets/background.png
+    - assets/
+    - assets/background.png
+    - assets/images/
+    - assets/images/fruit_parfait.jpg
+    - assets/images/greek_salad.jpg
+    - assets/images/stir_fry.jpg
+    - assets/images/chicken_salad.jpg
+    - assets/images/poke_bowl.jpg
+    - assets/images/smoothie_bowl.jpg
+    - assets/images/avocado_toast.jpg
+    - assets/images/quinoa_bowl.jpg
+    - assets/images/mediterranean_bowl.jpg
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
