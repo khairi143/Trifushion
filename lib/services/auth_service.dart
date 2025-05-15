@@ -80,6 +80,19 @@ class AuthService {
     }
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      log("Error sending password reset email: $e");
+      // Re-throw the error to handle it in the UI
+      throw FirebaseAuthException(
+        code: e is FirebaseAuthException ? e.code : 'unknown_error',
+        message: e.toString(),
+      );
+    }
+  }
+
   listenForTokenChanges() async {
     // Listen to changes in authentication state
     FirebaseAuth.instance.userChanges().listen((User? user) async {

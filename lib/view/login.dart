@@ -6,6 +6,7 @@ import '../view/user/usersignuppage.dart';
 import '../view/user/userhomepage.dart';
 import '../view/admin/adminHomePage.dart';
 import '../view/banned_account.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatelessWidget {
   @override
@@ -129,6 +130,23 @@ class LoginPage extends StatelessWidget {
                                   ),
                                 ),
                               ),
+
+                              TextButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => ForgotPasswordPage()),
+                                ),
+                                child: Text(
+                                  "Forgot Password?",
+                                  style: TextStyle(
+                                    color: const Color.fromARGB(
+                                        255, 255, 235, 153),
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+
                               if (viewModel.errorMessageController.text != "")
                                 Padding(
                                   padding: const EdgeInsets.all(8.0),
