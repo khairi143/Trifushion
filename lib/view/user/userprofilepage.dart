@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../service/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -11,7 +11,6 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
-
   final _auth = AuthService();
   final _formKey = GlobalKey<FormState>();
   TextEditingController _emailController = TextEditingController();
@@ -64,7 +63,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
           bool updateEmail = false;
 
           // Re-authenticate the user before updating the email
-          String currentPassword = _passwordController.text; // Get current password from the user
+          String currentPassword =
+              _passwordController.text; // Get current password from the user
           AuthCredential credential = EmailAuthProvider.credential(
             email: user.email!,
             password: currentPassword,
@@ -90,7 +90,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
           if (mounted) {
             if (updateEmail) {
-              _showDialog('Your profile has been successfully updated! Please check your new email inbox to verify and confirm the email change.', isSuccess: true);
+              _showDialog(
+                  'Your profile has been successfully updated! Please check your new email inbox to verify and confirm the email change.',
+                  isSuccess: true);
             } else {
               _showDialog('Profile updated successfully!', isSuccess: true);
             }
@@ -128,7 +130,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
       ),
-      
       body: SingleChildScrollView(
         child: Center(
           child: Padding(
@@ -227,13 +228,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           });
                         },
                         items: <String>['Male', 'Female', 'Other']
-                            .map<DropdownMenuItem<String>>(
-                                (String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
                         decoration: const InputDecoration(
                           border: UnderlineInputBorder(),
                           labelText: 'Gender',
@@ -271,7 +271,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           border: UnderlineInputBorder(),
                           labelText: 'Password',
                         ),
-                        obscureText: true, // This hides the password as asterisks
+                        obscureText:
+                            true, // This hides the password as asterisks
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Password is required';
@@ -291,7 +292,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           onPressed: _submitForm,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF870C14),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             textStyle: const TextStyle(fontSize: 18),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),

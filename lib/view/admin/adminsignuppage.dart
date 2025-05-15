@@ -2,47 +2,43 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'userhomepage.dart';
-import '../service/auth_service.dart';
+import 'adminHomePage.dart';
 
-class UserSignUpPage extends StatefulWidget {
+import '../../services/auth_service.dart';
+
+class AdminSignUpPage extends StatefulWidget {
   @override
-  _UserSignUpState createState() => _UserSignUpState();
+  _AdminSignUpState createState() => _AdminSignUpState();
 }
 
-class _UserSignUpState extends State<UserSignUpPage> {
-  final _formKey = GlobalKey<FormState>(); // Add form key
+class _AdminSignUpState extends State<AdminSignUpPage> {
+  final _formKey = GlobalKey<FormState>();
   final _auth = AuthService();
 
-  final _fullname = TextEditingController();
+  final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _contactno = TextEditingController();
   final _confirmpassword = TextEditingController();
-  final _height = TextEditingController();
-  final _weight = TextEditingController();
 
-  String? _selectedGender;
-  String? userID;
   bool _isChecked = false;
+  String? userID;
 
   @override
   void dispose() {
     super.dispose();
-    _fullname.dispose();
+    _name.dispose();
     _email.dispose();
     _password.dispose();
     _contactno.dispose();
     _confirmpassword.dispose();
-    _height.dispose();
-    _weight.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Signup'),
+        title: const Text('Admin Signup'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -55,81 +51,27 @@ class _UserSignUpState extends State<UserSignUpPage> {
                 children: [
                   SizedBox(height: 15),
                   Text(
-                    "User Details",
-                    style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                    "Admin Details",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   SizedBox(height: 4),
-                  Divider(color: Color(0xFF870C14), thickness: 2),
+                  Divider(
+                    color: Color(0xFF870C14),
+                    thickness: 2,
+                  ),
                   SizedBox(height: 15),
 
                   //Name
                   TextFormField(
-                    controller: _fullname,
-                    decoration: InputDecoration(labelText: 'Full Name'),
+                    controller: _name,
+                    decoration: InputDecoration(labelText: 'Admin Name'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Full name is required';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // Gender
-                  DropdownButtonFormField<String>(
-                    value: _selectedGender,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedGender = value;
-                      });
-                    },
-                    items: ['Male', 'Female', 'Other']
-                        .map((gender) => DropdownMenuItem<String>(
-                      value: gender,
-                      child: Text(gender),
-                    ))
-                        .toList(),
-                    decoration: InputDecoration(labelText: 'Gender'),
-                    validator: (value) {
-                      if (value == null) {
-                        return 'Gender is required';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // Height
-                  TextFormField(
-                    controller: _height,
-                    decoration: InputDecoration(labelText: 'Height (cm)'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Height is required';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Enter a valid number';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // Weight
-                  TextFormField(
-                    controller: _weight,
-                    decoration: InputDecoration(labelText: 'Weight (kg)'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Weight is required';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Enter a valid number';
+                        return 'Admin name is required';
                       }
                       return null;
                     },
@@ -225,6 +167,7 @@ class _UserSignUpState extends State<UserSignUpPage> {
                       ),
                     ],
                   ),
+
                   SizedBox(height: 20),
 
                   // Sign Up Button
@@ -234,13 +177,15 @@ class _UserSignUpState extends State<UserSignUpPage> {
                       onPressed: _signup,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF870C14),
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         textStyle: TextStyle(fontSize: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Text("Sign Up", style: TextStyle(color: Colors.white)),
+                      child: Text("Sign Up",
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
@@ -254,10 +199,11 @@ class _UserSignUpState extends State<UserSignUpPage> {
     );
   }
 
-  _signup() async {
+  void _signup() async {
     if (_formKey.currentState!.validate()) {
       if (_isChecked) {
-        final user = await _auth.createUserWithEmailAndPassword(_email.text, _password.text);
+        final user = await _auth.createUserWithEmailAndPassword(
+            _email.text, _password.text);
 
         if (user != null) {
           userID = user.uid;
@@ -268,7 +214,8 @@ class _UserSignUpState extends State<UserSignUpPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please agree to the Terms and Conditions to sign up.'),
+            content:
+                Text('Please agree to the Terms and Conditions to sign up.'),
             backgroundColor: Color(0xFF870C14),
           ),
         );
@@ -281,12 +228,10 @@ class _UserSignUpState extends State<UserSignUpPage> {
       FirebaseFirestore.instance.collection("users").doc(userID).set({
         "email": _email.text.trim(),
         "contactno": _contactno.text.trim(),
-        "height": _height.text.trim(),
-        "weight": _weight.text.trim(),
-        "gender": _selectedGender,
-        "name": _fullname.text.trim(),
+        "fullname": _name.text.trim(),
         "userID": userID,
-        "usertype": "user"
+        "usertype": "admin",
+        "isBanned": false
       });
     } catch (e) {
       print(e);
@@ -294,14 +239,17 @@ class _UserSignUpState extends State<UserSignUpPage> {
   }
 
   void goToHome(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => UserHomePage(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Admin account created successfully! You can now log in with your email.'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 5),
       ),
     );
+
+    // Navigate back to login page
+    Navigator.pop(context);
   }
 }
-
