@@ -185,6 +185,7 @@ class UserSignUpPage extends StatelessWidget {
                                       }
                                     }
                                     viewModel.isLoading = false;
+                                    viewModel.notifyListeners();
                                   },
                             style: ElevatedButton.styleFrom(
                               backgroundColor:
