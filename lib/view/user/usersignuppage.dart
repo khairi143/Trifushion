@@ -1,3 +1,5 @@
+import 'dart:js_interop';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../view_models/usersignup_vm.dart';
@@ -169,16 +171,20 @@ class UserSignUpPage extends StatelessWidget {
                             onPressed: viewModel.isLoading
                                 ? null
                                 : () async {
-                                    final error =
-                                        await viewModel.signUp(context);
-                                    if (error == null) {
-                                      Navigator.pop(context);
-                                    } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(content: Text(error)),
-                                      );
+                                    if (viewModel.formKey.currentState!
+                                        .validate()) {
+                                      final error =
+                                          await viewModel.signUp(context);
+                                      if (error == null) {
+                                        Navigator.pop(context);
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(content: Text(error)),
+                                        );
+                                      }
                                     }
+                                    viewModel.isLoading = false;
                                   },
                             style: ElevatedButton.styleFrom(
                               backgroundColor:
