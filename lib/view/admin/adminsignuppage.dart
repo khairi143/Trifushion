@@ -2,9 +2,9 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'adminHomePage.dart';
 
 import '../../services/auth_service.dart';
+import 'adminHomePage.dart';
 
 class AdminSignUpPage extends StatefulWidget {
   @override
@@ -247,7 +247,8 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
           } else if (e.toString().contains('invalid-email')) {
             errorMessage = 'Please enter a valid email address.';
           } else if (e.toString().contains('weak-password')) {
-            errorMessage = 'Password is too weak. Please use a stronger password.';
+            errorMessage =
+                'Password is too weak. Please use a stronger password.';
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -260,7 +261,8 @@ class _AdminSignUpState extends State<AdminSignUpPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please agree to the Terms and Conditions to sign up.'),
+            content:
+                Text('Please agree to the Terms and Conditions to sign up.'),
             backgroundColor: Color(0xFF870C14),
           ),
         );

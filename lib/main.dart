@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
 import 'view/login.dart'; // your login screen
@@ -27,7 +27,6 @@ class MyApp extends StatelessWidget {
     AuthService.clearLoginInfo();
 
     return MaterialApp(
-      title: 'iBites',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.green,
@@ -36,7 +35,7 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -71,11 +70,11 @@ class MyApp extends StatelessWidget {
       builder: (context, snapshot) {
         // 1. Waiting for connection
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
         // 2. User is logged in
         if (snapshot.hasData) {
-          return const MainPage();
+          return MainPage();
         }
         // 3. User is NOT logged in
         return LoginPage();
