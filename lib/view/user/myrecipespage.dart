@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../view_models/home_view_model.dart' as home;
+import '../recipe/recipe_form_page.dart';
 
 class Cookbook {
   final String id;
@@ -68,7 +69,10 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
           if (_tabController.index == 0) {
             _showCreateCookbookDialog(context);
           } else {
-            // TODO: Navigate to create recipe page
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => RecipeFormPage()),
+            );
           }
         },
         child: Icon(_tabController.index == 0 ? Icons.book : Icons.add),

@@ -7,6 +7,8 @@ import '../view/user/userhomepage.dart';
 import '../view/admin/adminHomePage.dart';
 import '../view/banned_account.dart';
 import '../view/forgot_password_page.dart';
+import '../view/main_page.dart';
+import '../main.dart';
 
 class LoginPage extends StatelessWidget {
   @override
@@ -207,7 +209,7 @@ class LoginPage extends StatelessWidget {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (_) =>
-                                                    UserHomePage())),
+                                                    MainScreen())),
                                         (reason) => Navigator.push(
                                             context,
                                             MaterialPageRoute(
