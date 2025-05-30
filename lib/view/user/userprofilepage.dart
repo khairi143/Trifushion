@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../services/auth_service.dart';
 import 'edit_profile_page.dart';
+import '../login.dart';
 import 'dart:ui';
 
 class UserProfilePage extends StatefulWidget {
@@ -173,6 +174,54 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
     );
   }
 
+  void _showLogoutConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Logout'),
+          content: Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  // Close the dialog first
+                  Navigator.of(context).pop();
+                  
+                  // Sign out the user
+                  await _auth.signout();
+                  
+                  // Navigate back to login page and clear history
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => LoginPage()),
+                    (route) => false,
+                  );
+                } catch (e) {
+                  print("Error during logout: $e");
+                  // If there's an error, show a snackbar
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error during logout: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: Text('Logout', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String? profileImageUrl = _userData['profileImageUrl'];
@@ -295,7 +344,7 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
                     title: 'Log Out',
                     color: Color(0xFFE53935),
                     onTap: () {
-                      // TODO: Handle log out
+                      _showLogoutConfirmationDialog();
                     },
                     isLogout: true,
                   ),

@@ -5,6 +5,8 @@ import '../login.dart';
 import 'adminprofilepage.dart';
 
 class AdminHomePage extends StatelessWidget {
+  const AdminHomePage({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,6 +16,8 @@ class AdminHomePage extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -126,6 +130,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isLoading = false;
+  String _filterStatus = 'all'; // 'all', 'active', 'banned'
+  String _sortBy = 'name'; // 'name', 'email', 'date'
+  bool _sortAscending = true;
 
   @override
   void initState() {
@@ -202,7 +209,102 @@ class _UserManagementPageState extends State<UserManagementPage> {
           ),
         ),
 
-        // Stats section
+        // Debug button for checking banned users
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: ElevatedButton.icon(
+            onPressed: _debugBannedUsers,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+            ),
+            icon: Icon(Icons.bug_report),
+            label: Text('Debug Banned Users'),
+          ),
+        ),
+
+        // Filter and Sort Controls
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Row(
+            children: [
+              // Filter Status
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _filterStatus,
+                    isExpanded: true,
+                    underline: SizedBox(),
+                    icon: Icon(Icons.filter_list),
+                    items: [
+                      DropdownMenuItem(value: 'all', child: Text('All Users')),
+                      DropdownMenuItem(value: 'active', child: Text('Active Users')),
+                      DropdownMenuItem(value: 'banned', child: Text('Banned Users')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _filterStatus = value!;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              // Sort Options
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _sortBy,
+                    isExpanded: true,
+                    underline: SizedBox(),
+                    icon: Icon(Icons.sort),
+                    items: [
+                      DropdownMenuItem(value: 'name', child: Text('Sort by Name')),
+                      DropdownMenuItem(value: 'email', child: Text('Sort by Email')),
+                      DropdownMenuItem(value: 'date', child: Text('Sort by Date')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _sortBy = value!;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              // Sort Direction
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward),
+                  onPressed: () {
+                    setState(() {
+                      _sortAscending = !_sortAscending;
+                    });
+                  },
+                  tooltip: _sortAscending ? 'Ascending' : 'Descending',
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        SizedBox(height: 8),
+
+        // Enhanced Stats section
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
           child: StreamBuilder<QuerySnapshot>(
@@ -212,26 +314,35 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 if (snapshot.hasData) {
                   int totalUsers = 0;
                   int bannedUsers = 0;
+                  int adminUsers = 0;
 
-                  snapshot.data!.docs.forEach((doc) {
+                  for (var doc in snapshot.data!.docs) {
                     var userData = doc.data() as Map<String, dynamic>;
                     if (userData['usertype'] == 'user') {
                       totalUsers++;
-                      if (userData['isBanned'] == true) {
+                      // 检查多种可能的banned字段名
+                      bool isBanned = userData['isBanned'] == true || 
+                                    userData['banned'] == true || 
+                                    userData['is_banned'] == true;
+                      if (isBanned) {
                         bannedUsers++;
                       }
+                    } else if (userData['usertype'] == 'admin') {
+                      adminUsers++;
                     }
-                  });
+                  }
 
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildStatCard(
-                          'Total Users', totalUsers.toString(), Colors.blue),
+                          'Total Users', totalUsers.toString(), Colors.blue, Icons.people),
                       _buildStatCard('Active Users',
-                          (totalUsers - bannedUsers).toString(), Colors.green),
+                          (totalUsers - bannedUsers).toString(), Colors.green, Icons.check_circle),
                       _buildStatCard(
-                          'Banned Users', bannedUsers.toString(), Colors.red),
+                          'Banned Users', bannedUsers.toString(), Colors.red, Icons.block),
+                      _buildStatCard(
+                          'Admins', adminUsers.toString(), Colors.purple, Icons.admin_panel_settings),
                     ],
                   );
                 } else {
@@ -264,8 +375,20 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       return Center(child: Text('No users found'));
                     }
 
-                    // Filter users
-                    var users = snapshot.data!.docs;
+                    // Filter and sort users
+                    var users = snapshot.data!.docs.where((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      var userType = data['usertype'] ?? 'Regular User';
+                      
+                      // Don't show admin accounts in the list
+                      if (userType == 'admin') {
+                        return false;
+                      }
+                      
+                      return true;
+                    }).toList();
+
+                    // Apply search filter
                     if (_searchQuery.isNotEmpty) {
                       users = users.where((doc) {
                         var data = doc.data() as Map<String, dynamic>;
@@ -282,6 +405,85 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       }).toList();
                     }
 
+                    // Apply status filter
+                    if (_filterStatus != 'all') {
+                      users = users.where((doc) {
+                        var data = doc.data() as Map<String, dynamic>;
+                        // 检查多种可能的banned字段名
+                        bool isBanned = data['isBanned'] == true || 
+                                      data['banned'] == true || 
+                                      data['is_banned'] == true;
+                        if (_filterStatus == 'active') {
+                          return !isBanned;
+                        } else if (_filterStatus == 'banned') {
+                          return isBanned;
+                        }
+                        return true;
+                      }).toList();
+                    }
+
+                    // Apply sorting
+                    users.sort((a, b) {
+                      var dataA = a.data() as Map<String, dynamic>;
+                      var dataB = b.data() as Map<String, dynamic>;
+                      
+                      dynamic valueA, valueB;
+                      
+                      switch (_sortBy) {
+                        case 'name':
+                          valueA = dataA['fullname'] ?? '';
+                          valueB = dataB['fullname'] ?? '';
+                          break;
+                        case 'email':
+                          valueA = dataA['email'] ?? '';
+                          valueB = dataB['email'] ?? '';
+                          break;
+                        case 'date':
+                          valueA = dataA['createdAt'] ?? '';
+                          valueB = dataB['createdAt'] ?? '';
+                          break;
+                        default:
+                          valueA = dataA['fullname'] ?? '';
+                          valueB = dataB['fullname'] ?? '';
+                      }
+                      
+                      if (valueA is Timestamp && valueB is Timestamp) {
+                        return _sortAscending ? valueA.compareTo(valueB) : valueB.compareTo(valueA);
+                      } else {
+                        String strA = valueA.toString().toLowerCase();
+                        String strB = valueB.toString().toLowerCase();
+                        return _sortAscending ? strA.compareTo(strB) : strB.compareTo(strA);
+                      }
+                    });
+
+                    if (users.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                            SizedBox(height: 16),
+                            Text(
+                              'No users found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Try adjusting your search or filter criteria',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
                     return ListView.builder(
                       itemCount: users.length,
                       itemBuilder: (context, index) {
@@ -289,79 +491,175 @@ class _UserManagementPageState extends State<UserManagementPage> {
                             users[index].data() as Map<String, dynamic>;
                         var userId = users[index].id;
 
-                        // Enhanced debugging to show all available fields
-                        print('User data for $userId: $userData');
-
                         var email = userData['email'] ?? 'No Email';
                         var name = userData['fullname'] ?? 'No Name';
                         var userType = userData['usertype'] ?? 'Regular User';
-                        var isBanned = userData['isBanned'] ?? false;
-
-                        // Don't show admin accounts in the list
-                        if (userType == 'admin') {
-                          return SizedBox.shrink();
-                        }
+                        // 检查多种可能的banned字段名
+                        bool isBanned = userData['isBanned'] == true || 
+                                      userData['banned'] == true || 
+                                      userData['is_banned'] == true;
 
                         return Card(
                           margin: EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 4.0),
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           child: ExpansionTile(
                             leading: CircleAvatar(
-                              backgroundColor:
-                                  isBanned ? Colors.red : Colors.blue,
-                              child: Icon(Icons.person, color: Colors.white),
+                              backgroundColor: (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? Colors.red : Colors.blue,
+                              radius: 25,
+                              child: Icon(Icons.person, color: Colors.white, size: 30),
                             ),
-                            title: Text(name),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            title: Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Row(
                               children: [
-                                Text(email),
-                                Text(
-                                  isBanned ? 'Banned' : 'Active',
-                                  style: TextStyle(
+                                Expanded(
+                                  child: Text(
+                                    email,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
                                     color: isBanned ? Colors.red : Colors.green,
-                                    fontWeight: FontWeight.bold,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    isBanned ? 'Banned' : 'Active',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                             children: [
-                              Padding(
+                              Container(
                                 padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Ban/Unban Button
-                                    ElevatedButton.icon(
-                                      onPressed: () =>
-                                          _showBanConfirmationDialog(
-                                              userId, name, isBanned),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isBanned
-                                            ? Colors.green
-                                            : Colors.red,
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
+                                    // 用户详细信息区域
+                                    Container(
+                                      padding: EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[50],
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      icon: Icon(isBanned
-                                          ? Icons.check_circle
-                                          : Icons.block),
-                                      label: Text(isBanned ? 'Unban' : 'Ban'),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'User Information',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                          SizedBox(height: 8),
+                                          _buildUserInfoRow('User ID:', userId),
+                                          _buildUserInfoRow('Full Name:', name),
+                                          _buildUserInfoRow('Email:', email),
+                                          _buildUserInfoRow('Account Type:', userType),
+                                          _buildUserInfoRow('Contact:', userData['contactno'] ?? 'Not provided'),
+                                          _buildUserInfoRow('Status:', isBanned ? '🚫 Banned' : '✅ Active'),
+                                          if (isBanned)
+                                            FutureBuilder<String?>(
+                                              future: _authService.getBanReason(userId),
+                                              builder: (context, snapshot) {
+                                                if (snapshot.hasData && snapshot.data != null) {
+                                                  return _buildUserInfoRow('Ban Reason:', snapshot.data!);
+                                                }
+                                                return SizedBox.shrink();
+                                              },
+                                            ),
+                                        ],
+                                      ),
                                     ),
-
-                                    // Delete Button
-                                    ElevatedButton.icon(
-                                      onPressed: () =>
-                                          _showDeleteConfirmationDialog(
-                                              userId, name),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red.shade800,
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                      ),
-                                      icon: Icon(Icons.delete_forever),
-                                      label: Text('Delete'),
+                                    SizedBox(height: 16),
+                                    // 操作按钮区域
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        // Ban/Unban Button
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () =>
+                                                _showBanConfirmationDialog(
+                                                    userId, name, isBanned),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: isBanned
+                                                  ? Colors.green
+                                                  : Colors.orange[700],
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 12),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            icon: Icon(isBanned
+                                                ? Icons.check_circle
+                                                : Icons.block),
+                                            label: Text(isBanned ? 'Unban User' : 'Ban User'),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _showUserDetailsDialog(userId, userData),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.blue[600],
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 12),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            icon: Icon(Icons.info_outline),
+                                            label: Text('View Details'),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        // Delete Button
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () =>
+                                                _showDeleteConfirmationDialog(
+                                                    userId, name),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red.shade700,
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 12),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            icon: Icon(Icons.delete_forever),
+                                            label: Text('Delete'),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -378,19 +676,106 @@ class _UserManagementPageState extends State<UserManagementPage> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, Color color) {
+  // Debug method to check banned users
+  Future<void> _debugBannedUsers() async {
+    try {
+      QuerySnapshot userSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      
+      List<String> debugInfo = [];
+      int totalUsers = 0;
+      int bannedUsers = 0;
+      
+      for (var doc in userSnapshot.docs) {
+        var userData = doc.data() as Map<String, dynamic>;
+        if (userData['usertype'] == 'user') {
+          totalUsers++;
+          
+          // Check all possible banned fields
+          bool isBanned = userData['isBanned'] == true || 
+                        userData['banned'] == true || 
+                        userData['is_banned'] == true;
+          
+          if (isBanned) {
+            bannedUsers++;
+            debugInfo.add('BANNED: ${userData['fullname'] ?? 'No Name'} (${userData['email'] ?? 'No Email'})');
+            debugInfo.add('  - isBanned: ${userData['isBanned']}');
+            debugInfo.add('  - banned: ${userData['banned']}');
+            debugInfo.add('  - is_banned: ${userData['is_banned']}');
+          }
+          
+          // Show first few users for reference
+          if (debugInfo.length < 10) {
+            debugInfo.add('USER: ${userData['fullname'] ?? 'No Name'} - Status: ${isBanned ? 'BANNED' : 'ACTIVE'}');
+          }
+        }
+      }
+      
+      // Show debug dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Debug: Banned Users'),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total Users: $totalUsers'),
+                Text('Banned Users: $bannedUsers'),
+                SizedBox(height: 16),
+                Text('User Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: debugInfo.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        debugInfo[index],
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Debug error: $e')),
+      );
+    }
+  }
+
+  Widget _buildStatCard(String title, String value, Color color, IconData icon) {
     return Card(
       elevation: 2,
       child: Container(
-        width: 100,
+        width: 110,
         padding: EdgeInsets.all(8),
         child: Column(
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+            Icon(icon, size: 24, color: color),
+            SizedBox(height: 5),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             SizedBox(height: 5),
@@ -551,6 +936,276 @@ class _UserManagementPageState extends State<UserManagementPage> {
           ],
         );
       },
+    );
+  }
+
+  void _showUserDetailsDialog(String userId, Map<String, dynamic> userData) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: double.maxFinite,
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? Colors.red : Colors.blue,
+                      radius: 25,
+                      child: Icon(Icons.person, color: Colors.white, size: 30),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userData['fullname'] ?? 'No Name',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            userData['email'] ?? 'No Email',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                
+                // User Details
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'User Details',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      _buildDetailRow(Icons.person, 'Full Name', userData['fullname'] ?? 'Not provided'),
+                      _buildDetailRow(Icons.email, 'Email', userData['email'] ?? 'Not provided'),
+                      _buildDetailRow(Icons.phone, 'Contact', userData['contactno'] ?? 'Not provided'),
+                      _buildDetailRow(Icons.badge, 'User ID', userId),
+                      _buildDetailRow(Icons.admin_panel_settings, 'Account Type', userData['usertype'] ?? 'user'),
+                      _buildDetailRow(
+                        (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? Icons.block : Icons.check_circle,
+                        'Status',
+                        (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? 'Banned' : 'Active',
+                        statusColor: (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? Colors.red : Colors.green,
+                      ),
+                      if (userData['height'] != null)
+                        _buildDetailRow(Icons.height, 'Height', userData['height']),
+                      if (userData['weight'] != null)
+                        _buildDetailRow(Icons.monitor_weight, 'Weight', userData['weight']),
+                      if (userData['gender'] != null)
+                        _buildDetailRow(Icons.wc, 'Gender', userData['gender']),
+                      if (userData['createdAt'] != null)
+                        _buildDetailRow(Icons.date_range, 'Created At', 
+                          userData['createdAt'].toDate().toString().split('.')[0]),
+                    ],
+                  ),
+                ),
+                
+                // Ban Reason if user is banned
+                if (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true)
+                  Container(
+                    margin: EdgeInsets.only(top: 16),
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.warning, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Ban Information',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        FutureBuilder<String?>(
+                          future: _authService.getBanReason(userId),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return CircularProgressIndicator();
+                            }
+                            if (snapshot.hasData && snapshot.data != null) {
+                              return Text(
+                                'Reason: ${snapshot.data}',
+                                style: TextStyle(fontSize: 14),
+                              );
+                            }
+                            return Text(
+                              'No ban reason available',
+                              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                
+                SizedBox(height: 20),
+                
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _showBanConfirmationDialog(
+                            userId, 
+                            userData['fullname'] ?? 'User', 
+                            userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? Colors.green : Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: Icon((userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? Icons.check_circle : Icons.block),
+                        label: Text((userData['isBanned'] == true || userData['banned'] == true || userData['is_banned'] == true) ? 'Unban User' : 'Ban User'),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _showDeleteConfirmationDialog(userId, userData['fullname'] ?? 'User');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: Icon(Icons.delete_forever),
+                        label: Text('Delete User'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, {Color? statusColor}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                color: statusColor ?? Colors.black87,
+                fontWeight: statusColor != null ? FontWeight.bold : FontWeight.normal,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserInfoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
