@@ -3,9 +3,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
 import '../../services/auth_service.dart';
 import '../../models/recipe.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 
 class RecipeFormPage extends StatefulWidget {
   final Recipe? recipe; // If provided, we're editing an existing recipe
@@ -28,7 +33,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   final _carbsController = TextEditingController();
   final _fatController = TextEditingController();
   
-  File? _coverImage;
+  XFile? _coverImage;
   List<String> _selectedCategories = [];
   List<Map<String, dynamic>> _ingredients = [];
   List<Map<String, dynamic>> _instructions = [];
@@ -71,7 +76,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     
     if (image != null) {
       setState(() {
-        _coverImage = File(image.path);
+        _coverImage = image;
       });
     }
   }
@@ -131,7 +136,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   }
 
   void _addInstruction() {
-    File? _selectedVideo;
+    XFile? _selectedVideo;
     final instructionController = TextEditingController();
 
     showDialog(
@@ -159,7 +164,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                           final picked = await picker.pickVideo(source: ImageSource.gallery);
                           if (picked != null) {
                             setState(() {
-                              _selectedVideo = File(picked.path);
+                              _selectedVideo = picked;
                             });
                           }
                         },
@@ -181,7 +186,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         _instructions.add({
                           'step': _instructions.length + 1,
                           'description': instructionController.text,
-                          'video': _selectedVideo, // Store the file for now
+                          'video': _selectedVideo, // Store as XFile
                         });
                       });
                       Navigator.pop(context);
@@ -212,28 +217,50 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           return;
         }
 
-        // Upload cover image if selected
+        // Upload cover image to Supabase
         String? imageUrl;
         if (_coverImage != null) {
-          final storageRef = FirebaseStorage.instance
-              .ref()
-              .child('recipe_images')
-              .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
-          
-          await storageRef.putFile(_coverImage!);
-          imageUrl = await storageRef.getDownloadURL();
+          if (kIsWeb) {
+            final bytes = await _coverImage!.readAsBytes();
+            imageUrl = await supabaseUpload(
+              bucket: 'recipeimages',
+              path: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+              fileOrBytes: bytes,
+              contentType: 'image/jpeg',
+            );
+          } else {
+            final file = File(_coverImage!.path);
+            imageUrl = await supabaseUpload(
+              bucket: 'recipeimages',
+              path: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+              fileOrBytes: file,
+              contentType: 'image/jpeg',
+            );
+          }
         }
 
-        // Upload instruction videos and replace file with URL
+        // Upload instruction videos to Supabase
         for (var instruction in _instructions) {
-          if (instruction['video'] != null && instruction['video'] is File) {
-            final storageRef = FirebaseStorage.instance
-                .ref()
-                .child('instruction_videos')
-                .child('${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4');
-            await storageRef.putFile(instruction['video']);
-            final videoUrl = await storageRef.getDownloadURL();
-            instruction['video'] = videoUrl;
+          if (instruction['video'] != null && instruction['video'] is XFile) {
+            if (kIsWeb) {
+              final bytes = await instruction['video'].readAsBytes();
+              final response = await supabaseUpload(
+                bucket: 'instructionvideos',
+                path: '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
+                fileOrBytes: bytes,
+                contentType: 'video/mp4',
+              );
+              instruction['video'] = response;
+            } else {
+              final file = File(instruction['video'].path);
+              final response = await supabaseUpload(
+                bucket: 'instructionvideos',
+                path: '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
+                fileOrBytes: file,
+                contentType: 'video/mp4',
+              );
+              instruction['video'] = response;
+            }
           }
         }
 
@@ -279,10 +306,27 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_coverImage != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(_coverImage!, height: 200, width: double.infinity, fit: BoxFit.cover),
-            ),
+            kIsWeb
+              ? FutureBuilder<Uint8List>(
+                  future: _coverImage!.readAsBytes(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(snapshot.data!, height: 200, width: double.infinity, fit: BoxFit.cover),
+                      );
+                    } else {
+                      return SizedBox(
+                        height: 200,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                  },
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(File(_coverImage!.path), height: 200, width: double.infinity, fit: BoxFit.cover),
+                ),
           SizedBox(height: 16),
           Text(_titleController.text, style: Theme.of(context).textTheme.headlineMedium),
           SizedBox(height: 8),
@@ -328,12 +372,58 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             itemCount: _instructions.length,
             itemBuilder: (context, index) {
               final instruction = _instructions[index];
-              return ListTile(
-                leading: CircleAvatar(child: Text('${instruction['step']}')),
-                title: Text(instruction['description']),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    leading: CircleAvatar(child: Text('${instruction['step']}')),
+                    title: Text(instruction['description']),
+                  ),
+                  if (instruction['video'] != null && instruction['video'] is XFile)
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: VideoPlayer(
+                        VideoPlayerController.file(File(instruction['video'].path))
+                          ..initialize().then((_) {
+                            setState(() {});
+                          }),
+                      ),
+                    ),
+                ],
               );
             },
           ),
+          if (_nutritionInfo['calories'] > 0 || _nutritionInfo['protein'] > 0 || 
+              _nutritionInfo['carbs'] > 0 || _nutritionInfo['fat'] > 0) ...[
+            SizedBox(height: 16),
+            Text('Nutrition Information', style: Theme.of(context).textTheme.titleMedium),
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildNutritionRow('Calories', '${_nutritionInfo['calories']} kcal'),
+                    _buildNutritionRow('Protein', '${_nutritionInfo['protein']}g'),
+                    _buildNutritionRow('Carbs', '${_nutritionInfo['carbs']}g'),
+                    _buildNutritionRow('Fat', '${_nutritionInfo['fat']}g'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNutritionRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(value),
         ],
       ),
     );
@@ -380,10 +470,24 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: _coverImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(_coverImage!, fit: BoxFit.cover),
-                              )
+                            ? (kIsWeb
+                                ? FutureBuilder<Uint8List>(
+                                    future: _coverImage!.readAsBytes(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                                        return ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.memory(snapshot.data!, fit: BoxFit.cover),
+                                        );
+                                      } else {
+                                        return Center(child: CircularProgressIndicator());
+                                      }
+                                    },
+                                  )
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.file(File(_coverImage!.path), fit: BoxFit.cover),
+                                  ))
                             : Icon(Icons.add_photo_alternate, size: 50),
                       ),
                     ),
@@ -576,34 +680,120 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         padding: const EdgeInsets.all(8.0),
                         child: Text('Add at least one instruction', style: TextStyle(color: Colors.red)),
                       ),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: _instructions.length,
-                      itemBuilder: (context, index) {
-                        final instruction = _instructions[index];
-                        return ListTile(
-                          leading: CircleAvatar(child: Text('${instruction['step']}')),
-                          title: Text(instruction['description']),
-                          trailing: IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () {
-                              setState(() {
-                                _instructions.removeAt(index);
-                                // Update step numbers
-                                for (var i = 0; i < _instructions.length; i++) {
-                                  _instructions[i]['step'] = i + 1;
-                                }
-                              });
-                            },
-                          ),
-                        );
-                      },
-                    ),
+                    // Live preview of instructions with video icon
+                    if (_instructions.isNotEmpty)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: _instructions.length,
+                        itemBuilder: (context, index) {
+                          final instruction = _instructions[index];
+                          return ListTile(
+                            leading: CircleAvatar(child: Text('${instruction['step']}')),
+                            title: Text(instruction['description']),
+                            subtitle: instruction['video'] != null
+                                ? (instruction['video'] is String // Already uploaded, show preview
+                                    ? Container(
+                                        height: 150,
+                                        child: VideoPlayerWidget(url: instruction['video']),
+                                      )
+                                    : (kIsWeb
+                                        ? Row(
+                                            children: [
+                                              Icon(Icons.videocam, color: Colors.green),
+                                              SizedBox(width: 4),
+                                              Flexible(child: Text('Video will be available after saving')),
+                                            ],
+                                          )
+                                        : Row(
+                                            children: [
+                                              Icon(Icons.videocam, color: Colors.green),
+                                              SizedBox(width: 4),
+                                              Flexible(child: Text('Video attached')),
+                                            ],
+                                          )))
+                                : null,
+                            trailing: IconButton(
+                              icon: Icon(Icons.delete),
+                              onPressed: () {
+                                setState(() {
+                                  _instructions.removeAt(index);
+                                  // Update step numbers
+                                  for (var i = 0; i < _instructions.length; i++) {
+                                    _instructions[i]['step'] = i + 1;
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
             ),
     );
+  }
+}
+
+class VideoPlayerWidget extends StatefulWidget {
+  final String url;
+  const VideoPlayerWidget({required this.url});
+  @override
+  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
+  late VideoPlayerController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url)
+      ..initialize().then((_) => setState(() {}));
+  }
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return _controller.value.isInitialized
+        ? AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          )
+        : Center(child: CircularProgressIndicator());
+  }
+}
+
+Future<String> supabaseUpload({
+  required String bucket,
+  required String path,
+  required dynamic fileOrBytes,
+  required String contentType,
+}) async {
+  if (kIsWeb) {
+    // Web: Use REST API
+    final url = 'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/$bucket/$path';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer YOUR_SUPABASE_ANON_KEY',
+        'Content-Type': contentType,
+      },
+      body: fileOrBytes, // List<int>
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return 'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/public/$bucket/$path';
+    } else {
+      throw Exception('Failed to upload: ${response.body}');
+    }
+  } else {
+    // Mobile/Desktop: Use Supabase client
+    final response = await Supabase.instance.client.storage
+        .from(bucket)
+        .upload(path, fileOrBytes, fileOptions: FileOptions(contentType: contentType));
+    return Supabase.instance.client.storage.from(bucket).getPublicUrl(response);
   }
 } 
