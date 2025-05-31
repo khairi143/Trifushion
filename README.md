@@ -107,8 +107,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Team
 
-- [Your Name] - Lead Developer
-- [Team Member 2] - UI/UX Designer
-- [Team Member 3] - Backend Developer
-
 Made with ❤️ by the iBites Team
