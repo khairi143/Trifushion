@@ -2,10 +2,13 @@ import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
+
+  User? get currentUser => _auth.currentUser;
 
   Future<User?> createUserWithEmailAndPassword(
       String email, String password) async {
