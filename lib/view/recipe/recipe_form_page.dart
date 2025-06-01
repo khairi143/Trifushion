@@ -11,77 +11,48 @@ import '../../services/auth_service.dart';
 import '../../models/recipe.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
+import '../../view_models/recipe_form_page_vm.dart';
 
-class RecipeFormPage extends StatefulWidget {
+class RecipeFormPage extends StatelessWidget {
   final Recipe? recipe; // If provided, we're editing an existing recipe
 
   const RecipeFormPage({Key? key, this.recipe}) : super(key: key);
 
   @override
-  _RecipeFormPageState createState() => _RecipeFormPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => RecipeFormViewModel(),
+      child: const _RecipeFormPageBody(),
+    );
+  }
 }
 
-class _RecipeFormPageState extends State<RecipeFormPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _servingsController = TextEditingController();
-  final _prepTimeController = TextEditingController();
-  final _cookTimeController = TextEditingController();
-  final _caloriesController = TextEditingController();
-  final _proteinController = TextEditingController();
-  final _carbsController = TextEditingController();
-  final _fatController = TextEditingController();
-  
-  XFile? _coverImage;
-  List<String> _selectedCategories = [];
-  List<Map<String, dynamic>> _ingredients = [];
-  List<Map<String, dynamic>> _instructions = [];
-  Map<String, dynamic> _nutritionInfo = {
-    'calories': 0,
-    'protein': 0,
-    'carbs': 0,
-    'fat': 0,
-  };
-  bool _isPreviewMode = false;
-
-  final List<String> _availableCategories = [
-    'Breakfast',
-    'Lunch',
-    'Dinner',
-    'Dessert',
-    'Snack',
-    'Vegetarian',
-    'Vegan',
-    'Gluten-Free',
-  ];
+class _RecipeFormPageBody extends StatefulWidget {
+  const _RecipeFormPageBody({Key? key}) : super(key: key);
 
   @override
+  State<_RecipeFormPageBody> createState() => _RecipeFormPageBodyState();
+}
+
+class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
+  @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _servingsController.dispose();
-    _prepTimeController.dispose();
-    _cookTimeController.dispose();
-    _caloriesController.dispose();
-    _proteinController.dispose();
-    _carbsController.dispose();
-    _fatController.dispose();
+    Provider.of<RecipeFormViewModel>(context, listen: false)
+        .disposeControllers();
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
+  Future<void> _pickImage(BuildContext context) async {
+    final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
     if (image != null) {
-      setState(() {
-        _coverImage = image;
-      });
+      Provider.of<RecipeFormViewModel>(context, listen: false)
+          .setCoverImage(image);
     }
   }
 
-  void _addIngredient() {
+  void _addIngredient(BuildContext context) {
+    final viewModel = Provider.of<RecipeFormViewModel>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) {
@@ -105,7 +76,8 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               ),
               TextField(
                 controller: unitController,
-                decoration: InputDecoration(labelText: 'Unit (e.g., g, ml, cups)'),
+                decoration:
+                    InputDecoration(labelText: 'Unit (e.g., g, ml, cups)'),
               ),
             ],
           ),
@@ -116,13 +88,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (nameController.text.isNotEmpty && amountController.text.isNotEmpty) {
-                  setState(() {
-                    _ingredients.add({
-                      'name': nameController.text,
-                      'amount': double.tryParse(amountController.text) ?? 0,
-                      'unit': unitController.text,
-                    });
+                if (nameController.text.isNotEmpty &&
+                    amountController.text.isNotEmpty) {
+                  viewModel.addIngredient({
+                    'name': nameController.text,
+                    'amount': double.tryParse(amountController.text) ?? 0,
+                    'unit': unitController.text,
                   });
                   Navigator.pop(context);
                 }
@@ -135,7 +106,8 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     );
   }
 
-  void _addInstruction() {
+  void _addInstruction(BuildContext context) {
+    final viewModel = Provider.of<RecipeFormViewModel>(context, listen: false);
     XFile? _selectedVideo;
     final instructionController = TextEditingController();
 
@@ -161,7 +133,8 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         icon: Icon(Icons.videocam),
                         onPressed: () async {
                           final picker = ImagePicker();
-                          final picked = await picker.pickVideo(source: ImageSource.gallery);
+                          final picked = await picker.pickVideo(
+                              source: ImageSource.gallery);
                           if (picked != null) {
                             setState(() {
                               _selectedVideo = picked;
@@ -169,7 +142,9 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                           }
                         },
                       ),
-                      Text(_selectedVideo != null ? "Video selected" : "No video"),
+                      Text(_selectedVideo != null
+                          ? "Video selected"
+                          : "No video"),
                     ],
                   ),
                 ],
@@ -182,12 +157,10 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                 ElevatedButton(
                   onPressed: () {
                     if (instructionController.text.isNotEmpty) {
-                      setState(() {
-                        _instructions.add({
-                          'step': _instructions.length + 1,
-                          'description': instructionController.text,
-                          'video': _selectedVideo, // Store as XFile
-                        });
+                      viewModel.addInstruction({
+                        'step': viewModel.instructions.length + 1,
+                        'description': instructionController.text,
+                        'video': _selectedVideo,
                       });
                       Navigator.pop(context);
                     }
@@ -202,14 +175,15 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     );
   }
 
-  Future<void> _saveRecipe() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+  Future<void> _saveRecipe(BuildContext context) async {
+    final viewModel = Provider.of<RecipeFormViewModel>(context, listen: false);
+    if (viewModel.formKey.currentState!.validate()) {
+      viewModel.formKey.currentState!.save();
 
       try {
         final authService = Provider.of<AuthService>(context, listen: false);
         final currentUser = authService.currentUser;
-        
+
         if (currentUser == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('You must be logged in to save a recipe')),
@@ -219,9 +193,9 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
 
         // Upload cover image to Supabase
         String? imageUrl;
-        if (_coverImage != null) {
+        if (viewModel.coverImage != null) {
           if (kIsWeb) {
-            final bytes = await _coverImage!.readAsBytes();
+            final bytes = await viewModel.coverImage!.readAsBytes();
             imageUrl = await supabaseUpload(
               bucket: 'recipeimages',
               path: '${DateTime.now().millisecondsSinceEpoch}.jpg',
@@ -229,7 +203,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               contentType: 'image/jpeg',
             );
           } else {
-            final file = File(_coverImage!.path);
+            final file = File(viewModel.coverImage!.path);
             imageUrl = await supabaseUpload(
               bucket: 'recipeimages',
               path: '${DateTime.now().millisecondsSinceEpoch}.jpg',
@@ -240,13 +214,14 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         }
 
         // Upload instruction videos to Supabase
-        for (var instruction in _instructions) {
+        for (var instruction in viewModel.instructions) {
           if (instruction['video'] != null && instruction['video'] is XFile) {
             if (kIsWeb) {
               final bytes = await instruction['video'].readAsBytes();
               final response = await supabaseUpload(
                 bucket: 'instructionvideos',
-                path: '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
+                path:
+                    '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
                 fileOrBytes: bytes,
                 contentType: 'video/mp4',
               );
@@ -255,7 +230,8 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               final file = File(instruction['video'].path);
               final response = await supabaseUpload(
                 bucket: 'instructionvideos',
-                path: '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
+                path:
+                    '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
                 fileOrBytes: file,
                 contentType: 'video/mp4',
               );
@@ -265,23 +241,18 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         }
 
         // Save recipe to Firestore
-        _nutritionInfo = {
-          'calories': double.tryParse(_caloriesController.text) ?? 0,
-          'protein': double.tryParse(_proteinController.text) ?? 0,
-          'carbs': double.tryParse(_carbsController.text) ?? 0,
-          'fat': double.tryParse(_fatController.text) ?? 0,
-        };
+        viewModel.updateNutritionInfo();
         await FirebaseFirestore.instance.collection('recipes').add({
-          'title': _titleController.text,
-          'description': _descriptionController.text,
+          'title': viewModel.titleController.text,
+          'description': viewModel.descriptionController.text,
           'coverImage': imageUrl,
-          'servings': int.tryParse(_servingsController.text) ?? 0,
-          'prepTime': int.tryParse(_prepTimeController.text) ?? 0,
-          'cookTime': int.tryParse(_cookTimeController.text) ?? 0,
-          'categories': _selectedCategories,
-          'ingredients': _ingredients,
-          'instructions': _instructions,
-          'nutritionInfo': _nutritionInfo,
+          'servings': int.tryParse(viewModel.servingsController.text) ?? 0,
+          'prepTime': int.tryParse(viewModel.prepTimeController.text) ?? 0,
+          'cookTime': int.tryParse(viewModel.cookTimeController.text) ?? 0,
+          'categories': viewModel.selectedCategories,
+          'ingredients': viewModel.ingredients,
+          'instructions': viewModel.instructions,
+          'nutritionInfo': viewModel.nutritionInfo,
           'createdAt': FieldValue.serverTimestamp(),
           'createdBy': currentUser.uid,
           'createdByEmail': currentUser.email,
@@ -299,123 +270,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     }
   }
 
-  Widget _buildPreview() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_coverImage != null)
-            kIsWeb
-              ? FutureBuilder<Uint8List>(
-                  future: _coverImage!.readAsBytes(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(snapshot.data!, height: 200, width: double.infinity, fit: BoxFit.cover),
-                      );
-                    } else {
-                      return SizedBox(
-                        height: 200,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                  },
-                )
-              : ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(File(_coverImage!.path), height: 200, width: double.infinity, fit: BoxFit.cover),
-                ),
-          SizedBox(height: 16),
-          Text(_titleController.text, style: Theme.of(context).textTheme.headlineMedium),
-          SizedBox(height: 8),
-          Text(_descriptionController.text, style: Theme.of(context).textTheme.bodyLarge),
-          SizedBox(height: 16),
-          Row(
-            children: [
-              Icon(Icons.people, size: 20),
-              SizedBox(width: 8),
-              Text('${_servingsController.text} servings'),
-              SizedBox(width: 16),
-              Icon(Icons.timer, size: 20),
-              SizedBox(width: 8),
-              Text('${_prepTimeController.text} min prep + ${_cookTimeController.text} min cook'),
-            ],
-          ),
-          SizedBox(height: 16),
-          if (_selectedCategories.isNotEmpty) ...[
-            Text('Categories', style: Theme.of(context).textTheme.titleMedium),
-            Wrap(
-              spacing: 8,
-              children: _selectedCategories.map((category) => Chip(label: Text(category))).toList(),
-            ),
-            SizedBox(height: 16),
-          ],
-          Text('Ingredients', style: Theme.of(context).textTheme.titleMedium),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: _ingredients.length,
-            itemBuilder: (context, index) {
-              final ingredient = _ingredients[index];
-              return ListTile(
-                title: Text('${ingredient['amount']} ${ingredient['unit']} ${ingredient['name']}'),
-              );
-            },
-          ),
-          SizedBox(height: 16),
-          Text('Instructions', style: Theme.of(context).textTheme.titleMedium),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: _instructions.length,
-            itemBuilder: (context, index) {
-              final instruction = _instructions[index];
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ListTile(
-                    leading: CircleAvatar(child: Text('${instruction['step']}')),
-                    title: Text(instruction['description']),
-                  ),
-                  if (instruction['video'] != null && instruction['video'] is XFile)
-                    AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: VideoPlayer(
-                        VideoPlayerController.file(File(instruction['video'].path))
-                          ..initialize().then((_) {
-                            setState(() {});
-                          }),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          if (_nutritionInfo['calories'] > 0 || _nutritionInfo['protein'] > 0 || 
-              _nutritionInfo['carbs'] > 0 || _nutritionInfo['fat'] > 0) ...[
-            SizedBox(height: 16),
-            Text('Nutrition Information', style: Theme.of(context).textTheme.titleMedium),
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildNutritionRow('Calories', '${_nutritionInfo['calories']} kcal'),
-                    _buildNutritionRow('Protein', '${_nutritionInfo['protein']}g'),
-                    _buildNutritionRow('Carbs', '${_nutritionInfo['carbs']}g'),
-                    _buildNutritionRow('Fat', '${_nutritionInfo['fat']}g'),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildNutritionRow(String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
@@ -429,309 +283,480 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Create Recipe'),
-        actions: [
-          IconButton(
-            icon: Icon(_isPreviewMode ? Icons.edit : Icons.preview),
-            onPressed: () {
-              setState(() {
-                _isPreviewMode = !_isPreviewMode;
-              });
-            },
-            tooltip: _isPreviewMode ? 'Edit Mode' : 'Preview Mode',
-          ),
-          IconButton(
-            icon: Icon(Icons.save),
-            onPressed: _saveRecipe,
-          ),
-        ],
-      ),
-      body: _isPreviewMode
-          ? _buildPreview()
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Cover Image
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: Container(
-                        height: 200,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
+  Widget _buildPreview(BuildContext context, RecipeFormViewModel viewModel) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (viewModel.coverImage != null)
+            kIsWeb
+                ? FutureBuilder<Uint8List>(
+                    future: viewModel.coverImage!.readAsBytes(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.done &&
+                          snapshot.hasData) {
+                        return ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: _coverImage != null
-                            ? (kIsWeb
-                                ? FutureBuilder<Uint8List>(
-                                    future: _coverImage!.readAsBytes(),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                                        return ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.memory(snapshot.data!, fit: BoxFit.cover),
-                                        );
-                                      } else {
-                                        return Center(child: CircularProgressIndicator());
-                                      }
-                                    },
-                                  )
-                                : ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(File(_coverImage!.path), fit: BoxFit.cover),
-                                  ))
-                            : Icon(Icons.add_photo_alternate, size: 50),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-
-                    // Title
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: InputDecoration(labelText: 'Title'),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter a title' : null,
-                    ),
-                    SizedBox(height: 16),
-
-                    // Description
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: InputDecoration(labelText: 'Description'),
-                      maxLines: 3,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter a description' : null,
-                    ),
-                    SizedBox(height: 16),
-
-                    // Servings and Time
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _servingsController,
-                            decoration: InputDecoration(labelText: 'Servings'),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Please enter servings';
-                              if (int.tryParse(value!) == null) return 'Please enter a valid number';
-                              if (int.parse(value) <= 0) return 'Servings must be greater than 0';
-                              return null;
-                            },
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _prepTimeController,
-                            decoration: InputDecoration(labelText: 'Prep Time (min)'),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Please enter prep time';
-                              if (int.tryParse(value!) == null) return 'Please enter a valid number';
-                              if (int.parse(value) < 0) return 'Time cannot be negative';
-                              return null;
-                            },
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _cookTimeController,
-                            decoration: InputDecoration(labelText: 'Cook Time (min)'),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Please enter cook time';
-                              if (int.tryParse(value!) == null) return 'Please enter a valid number';
-                              if (int.parse(value) < 0) return 'Time cannot be negative';
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-
-                    // Categories
-                    Text('Categories', style: Theme.of(context).textTheme.titleMedium),
-                    Wrap(
-                      spacing: 8,
-                      children: _availableCategories.map((category) {
-                        final isSelected = _selectedCategories.contains(category);
-                        return FilterChip(
-                          label: Text(category),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedCategories.add(category);
-                              } else {
-                                _selectedCategories.remove(category);
-                              }
-                            });
-                          },
+                          child: Image.memory(snapshot.data!,
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover),
                         );
-                      }).toList(),
-                    ),
-                    SizedBox(height: 16),
-
-                    // Nutrition Info
-                    Text('Nutrition Information', style: Theme.of(context).textTheme.titleMedium),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _caloriesController,
-                            decoration: InputDecoration(labelText: 'Calories (kcal)'),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _proteinController,
-                            decoration: InputDecoration(labelText: 'Protein (g)'),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _carbsController,
-                            decoration: InputDecoration(labelText: 'Carbs (g)'),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _fatController,
-                            decoration: InputDecoration(labelText: 'Fat (g)'),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-
-                    // Ingredients
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Ingredients', style: Theme.of(context).textTheme.titleMedium),
-                        IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: _addIngredient,
-                        ),
-                      ],
-                    ),
-                    if (_ingredients.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text('Add at least one ingredient', style: TextStyle(color: Colors.red)),
-                      ),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: _ingredients.length,
-                      itemBuilder: (context, index) {
-                        final ingredient = _ingredients[index];
-                        return ListTile(
-                          title: Text(ingredient['name']),
-                          subtitle: Text('${ingredient['amount']} ${ingredient['unit']}'),
-                          trailing: IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () {
-                              setState(() {
-                                _ingredients.removeAt(index);
-                              });
-                            },
-                          ),
+                      } else {
+                        return SizedBox(
+                          height: 200,
+                          child: Center(child: CircularProgressIndicator()),
                         );
-                      },
-                    ),
-                    SizedBox(height: 16),
-
-                    // Instructions
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Instructions', style: Theme.of(context).textTheme.titleMedium),
-                        IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: _addInstruction,
-                        ),
-                      ],
-                    ),
-                    if (_instructions.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text('Add at least one instruction', style: TextStyle(color: Colors.red)),
+                      }
+                    },
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(File(viewModel.coverImage!.path),
+                        height: 200, width: double.infinity, fit: BoxFit.cover),
+                  ),
+          SizedBox(height: 16),
+          Text(viewModel.titleController.text,
+              style: Theme.of(context).textTheme.headlineMedium),
+          SizedBox(height: 8),
+          Text(viewModel.descriptionController.text,
+              style: Theme.of(context).textTheme.bodyLarge),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.people, size: 20),
+              SizedBox(width: 8),
+              Text('${viewModel.servingsController.text} servings'),
+              SizedBox(width: 16),
+              Icon(Icons.timer, size: 20),
+              SizedBox(width: 8),
+              Text(
+                  '${viewModel.prepTimeController.text} min prep + ${viewModel.cookTimeController.text} min cook'),
+            ],
+          ),
+          SizedBox(height: 16),
+          if (viewModel.selectedCategories.isNotEmpty) ...[
+            Text('Categories', style: Theme.of(context).textTheme.titleMedium),
+            Wrap(
+              spacing: 8,
+              children: viewModel.selectedCategories
+                  .map((category) => Chip(label: Text(category)))
+                  .toList(),
+            ),
+            SizedBox(height: 16),
+          ],
+          Text('Ingredients', style: Theme.of(context).textTheme.titleMedium),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: viewModel.ingredients.length,
+            itemBuilder: (context, index) {
+              final ingredient = viewModel.ingredients[index];
+              return ListTile(
+                title: Text(
+                    '${ingredient['amount']} ${ingredient['unit']} ${ingredient['name']}'),
+              );
+            },
+          ),
+          SizedBox(height: 16),
+          Text('Instructions', style: Theme.of(context).textTheme.titleMedium),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: viewModel.instructions.length,
+            itemBuilder: (context, index) {
+              final instruction = viewModel.instructions[index];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    leading:
+                        CircleAvatar(child: Text('${instruction['step']}')),
+                    title: Text(instruction['description']),
+                  ),
+                  if (instruction['video'] != null &&
+                      instruction['video'] is XFile)
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: VideoPlayer(
+                        VideoPlayerController.file(
+                            File(instruction['video'].path))
+                          ..initialize().then((_) {
+                            setState(() {});
+                          }),
                       ),
-                    // Live preview of instructions with video icon
-                    if (_instructions.isNotEmpty)
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        itemCount: _instructions.length,
-                        itemBuilder: (context, index) {
-                          final instruction = _instructions[index];
-                          return ListTile(
-                            leading: CircleAvatar(child: Text('${instruction['step']}')),
-                            title: Text(instruction['description']),
-                            subtitle: instruction['video'] != null
-                                ? (instruction['video'] is String // Already uploaded, show preview
-                                    ? Container(
-                                        height: 150,
-                                        child: VideoPlayerWidget(url: instruction['video']),
-                                      )
-                                    : (kIsWeb
-                                        ? Row(
-                                            children: [
-                                              Icon(Icons.videocam, color: Colors.green),
-                                              SizedBox(width: 4),
-                                              Flexible(child: Text('Video will be available after saving')),
-                                            ],
-                                          )
-                                        : Row(
-                                            children: [
-                                              Icon(Icons.videocam, color: Colors.green),
-                                              SizedBox(width: 4),
-                                              Flexible(child: Text('Video attached')),
-                                            ],
-                                          )))
-                                : null,
-                            trailing: IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () {
-                                setState(() {
-                                  _instructions.removeAt(index);
-                                  // Update step numbers
-                                  for (var i = 0; i < _instructions.length; i++) {
-                                    _instructions[i]['step'] = i + 1;
-                                  }
-                                });
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          if (viewModel.nutritionInfo['calories'] > 0 ||
+              viewModel.nutritionInfo['protein'] > 0 ||
+              viewModel.nutritionInfo['carbs'] > 0 ||
+              viewModel.nutritionInfo['fat'] > 0) ...[
+            SizedBox(height: 16),
+            Text('Nutrition Information',
+                style: Theme.of(context).textTheme.titleMedium),
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildNutritionRow('Calories',
+                        '${viewModel.nutritionInfo['calories']} kcal'),
+                    _buildNutritionRow(
+                        'Protein', '${viewModel.nutritionInfo['protein']}g'),
+                    _buildNutritionRow(
+                        'Carbs', '${viewModel.nutritionInfo['carbs']}g'),
+                    _buildNutritionRow(
+                        'Fat', '${viewModel.nutritionInfo['fat']}g'),
                   ],
                 ),
               ),
             ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<RecipeFormViewModel>(
+      builder: (context, viewModel, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Create Recipe'),
+            actions: [
+              IconButton(
+                icon:
+                    Icon(viewModel.isPreviewMode ? Icons.edit : Icons.preview),
+                onPressed: () {
+                  viewModel.togglePreviewMode();
+                },
+                tooltip: viewModel.isPreviewMode ? 'Edit Mode' : 'Preview Mode',
+              ),
+              IconButton(
+                icon: Icon(Icons.save),
+                onPressed: () => _saveRecipe(context),
+              ),
+            ],
+          ),
+          body: viewModel.isPreviewMode
+              ? _buildPreview(context, viewModel)
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(16),
+                  child: Form(
+                    key: viewModel.formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Cover Image
+                        GestureDetector(
+                          onTap: () => _pickImage(context),
+                          child: Container(
+                            height: 200,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: viewModel.coverImage != null
+                                ? (kIsWeb
+                                    ? FutureBuilder<Uint8List>(
+                                        future:
+                                            viewModel.coverImage!.readAsBytes(),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState ==
+                                                  ConnectionState.done &&
+                                              snapshot.hasData) {
+                                            return ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: Image.memory(
+                                                  snapshot.data!,
+                                                  fit: BoxFit.cover),
+                                            );
+                                          } else {
+                                            return Center(
+                                                child:
+                                                    CircularProgressIndicator());
+                                          }
+                                        },
+                                      )
+                                    : ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.file(
+                                            File(viewModel.coverImage!.path),
+                                            fit: BoxFit.cover),
+                                      ))
+                                : Icon(Icons.add_photo_alternate, size: 50),
+                          ),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Title
+                        TextFormField(
+                          controller: viewModel.titleController,
+                          decoration: InputDecoration(labelText: 'Title'),
+                          validator: (value) => value?.isEmpty ?? true
+                              ? 'Please enter a title'
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+
+                        // Description
+                        TextFormField(
+                          controller: viewModel.descriptionController,
+                          decoration: InputDecoration(labelText: 'Description'),
+                          maxLines: 3,
+                          validator: (value) => value?.isEmpty ?? true
+                              ? 'Please enter a description'
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+
+                        // Servings and Time
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.servingsController,
+                                decoration:
+                                    InputDecoration(labelText: 'Servings'),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value?.isEmpty ?? true)
+                                    return 'Please enter servings';
+                                  if (int.tryParse(value!) == null)
+                                    return 'Please enter a valid number';
+                                  if (int.parse(value) <= 0)
+                                    return 'Servings must be greater than 0';
+                                  return null;
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.prepTimeController,
+                                decoration: InputDecoration(
+                                    labelText: 'Prep Time (min)'),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value?.isEmpty ?? true)
+                                    return 'Please enter prep time';
+                                  if (int.tryParse(value!) == null)
+                                    return 'Please enter a valid number';
+                                  if (int.parse(value) < 0)
+                                    return 'Time cannot be negative';
+                                  return null;
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.cookTimeController,
+                                decoration: InputDecoration(
+                                    labelText: 'Cook Time (min)'),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value?.isEmpty ?? true)
+                                    return 'Please enter cook time';
+                                  if (int.tryParse(value!) == null)
+                                    return 'Please enter a valid number';
+                                  if (int.parse(value) < 0)
+                                    return 'Time cannot be negative';
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+
+                        // Categories
+                        Text('Categories',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        Wrap(
+                          spacing: 8,
+                          children:
+                              viewModel.availableCategories.map((category) {
+                            final isSelected =
+                                viewModel.selectedCategories.contains(category);
+                            return FilterChip(
+                              label: Text(category),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                viewModel.toggleCategory(category, selected);
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Nutrition Info
+                        Text('Nutrition Information',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.caloriesController,
+                                decoration: InputDecoration(
+                                    labelText: 'Calories (kcal)'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.proteinController,
+                                decoration:
+                                    InputDecoration(labelText: 'Protein (g)'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.carbsController,
+                                decoration:
+                                    InputDecoration(labelText: 'Carbs (g)'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: viewModel.fatController,
+                                decoration:
+                                    InputDecoration(labelText: 'Fat (g)'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+
+                        // Ingredients
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Ingredients',
+                                style: Theme.of(context).textTheme.titleMedium),
+                            IconButton(
+                              icon: Icon(Icons.add),
+                              onPressed: () => _addIngredient(context),
+                            ),
+                          ],
+                        ),
+                        if (viewModel.ingredients.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text('Add at least one ingredient',
+                                style: TextStyle(color: Colors.red)),
+                          ),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: viewModel.ingredients.length,
+                          itemBuilder: (context, index) {
+                            final ingredient = viewModel.ingredients[index];
+                            return ListTile(
+                              title: Text(ingredient['name']),
+                              subtitle: Text(
+                                  '${ingredient['amount']} ${ingredient['unit']}'),
+                              trailing: IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () {
+                                  viewModel.removeIngredient(index);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                        SizedBox(height: 16),
+
+                        // Instructions
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Instructions',
+                                style: Theme.of(context).textTheme.titleMedium),
+                            IconButton(
+                              icon: Icon(Icons.add),
+                              onPressed: () => _addInstruction(context),
+                            ),
+                          ],
+                        ),
+                        if (viewModel.instructions.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text('Add at least one instruction',
+                                style: TextStyle(color: Colors.red)),
+                          ),
+                        if (viewModel.instructions.isNotEmpty)
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: viewModel.instructions.length,
+                            itemBuilder: (context, index) {
+                              final instruction = viewModel.instructions[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                    child: Text('${instruction['step']}')),
+                                title: Text(instruction['description']),
+                                subtitle: instruction['video'] != null
+                                    ? (instruction['video'] is String
+                                        ? Container(
+                                            height: 150,
+                                            child: VideoPlayerWidget(
+                                                url: instruction['video']),
+                                          )
+                                        : (kIsWeb
+                                            ? Row(
+                                                children: [
+                                                  Icon(Icons.videocam,
+                                                      color: Colors.green),
+                                                  SizedBox(width: 4),
+                                                  Flexible(
+                                                      child: Text(
+                                                          'Video will be available after saving')),
+                                                ],
+                                              )
+                                            : Row(
+                                                children: [
+                                                  Icon(Icons.videocam,
+                                                      color: Colors.green),
+                                                  SizedBox(width: 4),
+                                                  Flexible(
+                                                      child: Text(
+                                                          'Video attached')),
+                                                ],
+                                              )))
+                                    : null,
+                                trailing: IconButton(
+                                  icon: Icon(Icons.delete),
+                                  onPressed: () {
+                                    viewModel.removeInstruction(index);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+        );
+      },
     );
   }
 }
@@ -751,11 +776,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     _controller = VideoPlayerController.network(widget.url)
       ..initialize().then((_) => setState(() {}));
   }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return _controller.value.isInitialized
@@ -775,7 +802,8 @@ Future<String> supabaseUpload({
 }) async {
   if (kIsWeb) {
     // Web: Use REST API
-    final url = 'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/$bucket/$path';
+    final url =
+        'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/$bucket/$path';
     final response = await http.post(
       Uri.parse(url),
       headers: {
@@ -791,9 +819,9 @@ Future<String> supabaseUpload({
     }
   } else {
     // Mobile/Desktop: Use Supabase client
-    final response = await Supabase.instance.client.storage
-        .from(bucket)
-        .upload(path, fileOrBytes, fileOptions: FileOptions(contentType: contentType));
+    final response = await Supabase.instance.client.storage.from(bucket).upload(
+        path, fileOrBytes,
+        fileOptions: FileOptions(contentType: contentType));
     return Supabase.instance.client.storage.from(bucket).getPublicUrl(response);
   }
-} 
+}
