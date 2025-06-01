@@ -16,6 +16,7 @@ class Recipe {
   final String userId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String createdByName;
 
   Recipe({
     required this.id,
@@ -33,6 +34,7 @@ class Recipe {
     required this.userId,
     required this.createdAt,
     required this.updatedAt,
+    required this.createdByName,
   });
 
   factory Recipe.fromFirestore(DocumentSnapshot doc) {
@@ -55,8 +57,9 @@ class Recipe {
           .toList() ?? [],
       nutritionInfo: NutritionInfo.fromMap(data['nutritionInfo'] ?? {}),
       userId: data['userId'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
+      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(),
+      createdByName: data['createdByName'] ?? '-',
     );
   }
 
@@ -76,6 +79,7 @@ class Recipe {
       'userId': userId,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'createdByName': createdByName,
     };
   }
 }

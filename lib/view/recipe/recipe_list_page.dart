@@ -131,78 +131,94 @@ class _RecipeListPageState extends State<RecipeListPage> {
                   itemBuilder: (context, index) {
                     final recipe = recipes[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            recipe.coverImage,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 80,
-                                height: 80,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.error),
-                              );
-                            },
-                          ),
-                        ),
-                        title: Text(
-                          recipe.title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              recipe.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              children: recipe.categories.map((category) {
-                                return Chip(
-                                  label: Text(
-                                    category,
-                                    style: const TextStyle(fontSize: 12),
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 2,
+                      child: Row(
+                        children: [
+                          // Image with duration overlay
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  bottomLeft: Radius.circular(16),
+                                ),
+                                child: Image.network(
+                                  recipe.coverImage.isNotEmpty ? recipe.coverImage : 'https://via.placeholder.com/110x80?text=No+Image',
+                                  width: 110,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 6,
+                                left: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                  padding: EdgeInsets.zero,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                );
-                              }).toList(),
+                                  child: Text(
+                                    // Show total time as duration (hh:mm:ss)
+                                    _formatDuration(recipe.prepTime + recipe.cookTime),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                          // Info
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Title
+                                  Text(
+                                    recipe.title,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  // Meta row
+                                  Row(
+                                    children: [
+                                      Icon(Icons.visibility, size: 14, color: Colors.grey[600]),
+                                      const SizedBox(width: 2),
+                                      Text('-', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        recipe.createdAt != null ? _timeAgo(recipe.createdAt) : '-',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  // Author row
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundImage: NetworkImage('https://ui-avatars.com/api/?name=${Uri.encodeComponent(recipe.createdByName)}'),
+                                        child: Icon(Icons.person, size: 16),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        recipe.createdByName.isNotEmpty ? recipe.createdByName : '-',
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.timer),
-                            Text('${recipe.totalTime} min'),
-                          ],
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  RecipeDetailPage(recipe: recipe),
-                            ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -212,6 +228,41 @@ class _RecipeListPageState extends State<RecipeListPage> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => RecipeFormPage()),
+          );
+        },
+        child: Icon(Icons.add),
+        tooltip: 'Add Recipe',
+      ),
     );
+  }
+
+  String _formatDuration(int totalMinutes) {
+    if (totalMinutes <= 0) return '00:00';
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:00';
+    } else {
+      return '00:${minutes.toString().padLeft(2, '0')}:00';
+    }
+  }
+
+  String _timeAgo(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays >= 1) {
+      return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+    } else if (diff.inHours >= 1) {
+      return '${diff.inHours} hour${diff.inHours > 1 ? 's' : ''} ago';
+    } else if (diff.inMinutes >= 1) {
+      return '${diff.inMinutes} min ago';
+    } else {
+      return 'Just now';
+    }
   }
 } 

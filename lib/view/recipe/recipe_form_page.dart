@@ -44,6 +44,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     'fat': 0,
   };
   bool _isPreviewMode = false;
+  Map<String, dynamic>? _lastCreatedRecipe;
 
   final List<String> _availableCategories = [
     'Breakfast',
@@ -283,14 +284,32 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           'instructions': _instructions,
           'nutritionInfo': _nutritionInfo,
           'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
           'createdBy': currentUser.uid,
           'createdByEmail': currentUser.email,
+          'createdByName': currentUser.displayName ?? currentUser.email ?? '-',
         });
 
-        Navigator.pop(context);
+        setState(() {
+          _lastCreatedRecipe = {
+            'title': _titleController.text,
+            'description': _descriptionController.text,
+            'coverImage': imageUrl,
+            'servings': _servingsController.text,
+            'prepTime': _prepTimeController.text,
+            'cookTime': _cookTimeController.text,
+            'categories': _selectedCategories,
+            'ingredients': _ingredients,
+            'instructions': _instructions,
+            'nutritionInfo': _nutritionInfo,
+          };
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Recipe saved successfully!')),
         );
+        // Automatically navigate back to the recipe list page
+        Navigator.pop(context);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving recipe: $e')),
@@ -434,20 +453,28 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Create Recipe'),
+        leading: _isPreviewMode
+            ? IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _isPreviewMode = false;
+                  });
+                },
+                tooltip: 'Back to Edit',
+              )
+            : null,
         actions: [
-          IconButton(
-            icon: Icon(_isPreviewMode ? Icons.edit : Icons.preview),
-            onPressed: () {
-              setState(() {
-                _isPreviewMode = !_isPreviewMode;
-              });
-            },
-            tooltip: _isPreviewMode ? 'Edit Mode' : 'Preview Mode',
-          ),
-          IconButton(
-            icon: Icon(Icons.save),
-            onPressed: _saveRecipe,
-          ),
+          if (!_isPreviewMode)
+            IconButton(
+              icon: Icon(Icons.preview),
+              onPressed: () {
+                setState(() {
+                  _isPreviewMode = true;
+                });
+              },
+              tooltip: 'Preview Mode',
+            ),
         ],
       ),
       body: _isPreviewMode
@@ -496,9 +523,13 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     // Title
                     TextFormField(
                       controller: _titleController,
-                      decoration: InputDecoration(labelText: 'Title'),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter a title' : null,
+                      decoration: InputDecoration(labelText: 'Recipe Title'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a recipe title';
+                        }
+                        return null;
+                      },
                     ),
                     SizedBox(height: 16),
 
@@ -506,9 +537,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     TextFormField(
                       controller: _descriptionController,
                       decoration: InputDecoration(labelText: 'Description'),
-                      maxLines: 3,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter a description' : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a description';
+                        }
+                        return null;
+                      },
                     ),
                     SizedBox(height: 16),
 
@@ -521,9 +555,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                             decoration: InputDecoration(labelText: 'Servings'),
                             keyboardType: TextInputType.number,
                             validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Please enter servings';
-                              if (int.tryParse(value!) == null) return 'Please enter a valid number';
-                              if (int.parse(value) <= 0) return 'Servings must be greater than 0';
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter number of servings';
+                              }
+                              if (int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
                               return null;
                             },
                           ),
@@ -532,12 +569,15 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _prepTimeController,
-                            decoration: InputDecoration(labelText: 'Prep Time (min)'),
+                            decoration: InputDecoration(labelText: 'Prep Time (minutes)'),
                             keyboardType: TextInputType.number,
                             validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Please enter prep time';
-                              if (int.tryParse(value!) == null) return 'Please enter a valid number';
-                              if (int.parse(value) < 0) return 'Time cannot be negative';
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter prep time';
+                              }
+                              if (int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
                               return null;
                             },
                           ),
@@ -546,12 +586,15 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _cookTimeController,
-                            decoration: InputDecoration(labelText: 'Cook Time (min)'),
+                            decoration: InputDecoration(labelText: 'Cook Time (minutes)'),
                             keyboardType: TextInputType.number,
                             validator: (value) {
-                              if (value?.isEmpty ?? true) return 'Please enter cook time';
-                              if (int.tryParse(value!) == null) return 'Please enter a valid number';
-                              if (int.parse(value) < 0) return 'Time cannot be negative';
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter cook time';
+                              }
+                              if (int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
                               return null;
                             },
                           ),
@@ -590,16 +633,28 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _caloriesController,
-                            decoration: InputDecoration(labelText: 'Calories (kcal)'),
+                            decoration: InputDecoration(labelText: 'Calories (optional)'),
                             keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                         SizedBox(width: 16),
                         Expanded(
                           child: TextFormField(
                             controller: _proteinController,
-                            decoration: InputDecoration(labelText: 'Protein (g)'),
+                            decoration: InputDecoration(labelText: 'Protein (g) (optional)'),
                             keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ],
@@ -610,16 +665,28 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _carbsController,
-                            decoration: InputDecoration(labelText: 'Carbs (g)'),
+                            decoration: InputDecoration(labelText: 'Carbs (g) (optional)'),
                             keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                         SizedBox(width: 16),
                         Expanded(
                           child: TextFormField(
                             controller: _fatController,
-                            decoration: InputDecoration(labelText: 'Fat (g)'),
+                            decoration: InputDecoration(labelText: 'Fat (g) (optional)'),
                             keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ],
@@ -728,6 +795,20 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                           );
                         },
                       ),
+                    // Save button at the bottom
+                    SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.save),
+                        label: Text('Save Recipe'),
+                        onPressed: _saveRecipe,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          textStyle: TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -774,15 +855,17 @@ Future<String> supabaseUpload({
   required String contentType,
 }) async {
   if (kIsWeb) {
-    // Web: Use REST API
     final url = 'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/$bucket/$path';
+    final anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNma2ltcGRucHhnaGV2Y3B4dm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2Nzk0NjAsImV4cCI6MjA2NDI1NTQ2MH0.CSBv7uodAcyco-UaoC4OFSEqQE-z9gXG0ygH49FnnpQ';
     final response = await http.post(
       Uri.parse(url),
       headers: {
-        'Authorization': 'Bearer YOUR_SUPABASE_ANON_KEY',
+        'Authorization': 'Bearer $anonKey',
+        'apikey': anonKey,
         'Content-Type': contentType,
+        'x-upsert': 'true',
       },
-      body: fileOrBytes, // List<int>
+      body: fileOrBytes,
     );
     if (response.statusCode == 200 || response.statusCode == 201) {
       return 'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/public/$bucket/$path';

@@ -3,7 +3,7 @@ import '../../services/auth_service.dart';
 import '../login.dart'; // 导入LoginPage
 import 'userprofilepage.dart';
 import 'searchpage.dart';
-import 'myrecipespage.dart';
+import '../my_recipes/my_recipes_page.dart';
 import '../../view_models/home_view_model.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -36,7 +36,7 @@ class _UserHomePageState extends State<UserHomePage> {
     // Home page content will be set in build method
     Container(),
     const SearchPage(),
-    const MyRecipesPage(),
+    MyRecipesPage(),
     UserProfilePage(),
   ];
 
