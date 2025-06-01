@@ -143,4 +143,15 @@ class RecipeService {
       return snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
     });
   }
+
+  // Stream recipes created by a given user (using a Firestore query)
+  Stream<List<Recipe>> getMyRecipes(String userId) {
+    if (userId.isEmpty) return Stream.value([]);
+    return _firestore
+        .collection("recipes")
+        .where("createdBy", isEqualTo: userId)
+        .orderBy("createdAt", descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList());
+  }
 } 

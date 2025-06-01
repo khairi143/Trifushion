@@ -12,7 +12,7 @@ import 'services/auth_service.dart';
 import 'view_models/home_view_model.dart';
 import 'view/recipe/recipe_list_page.dart';
 import 'view/user/searchpage.dart';
-import 'view/user/myrecipespage.dart';
+import 'view/my_recipes/my_recipes_page.dart';
 import 'view/user/userprofilepage.dart';
 
 void main() async {
@@ -45,26 +45,26 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
       ],
       child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.green,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.green,
-            brightness: Brightness.light,
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.green,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          useMaterial3: true,
-          cardTheme: CardThemeData(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          appBarTheme: const AppBarTheme(
-            elevation: 0,
-            centerTitle: true,
+        ),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
-          ),
+      ),
           scaffoldBackgroundColor: Colors.white,
           bottomNavigationBarTheme: const BottomNavigationBarThemeData(
             backgroundColor: Colors.white,
@@ -107,7 +107,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const UserHomePage(),
     const SearchPage(),
-    const MyRecipesPage(),
+    MyRecipesPage(),
     UserProfilePage(),
   ];
 

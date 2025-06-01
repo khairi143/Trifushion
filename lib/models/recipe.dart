@@ -16,6 +16,7 @@ class Recipe {
   final String userId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String createdByName;
 
   Recipe({
     required this.id,
@@ -33,6 +34,7 @@ class Recipe {
     required this.userId,
     required this.createdAt,
     required this.updatedAt,
+    required this.createdByName,
   });
 
   factory Recipe.fromFirestore(DocumentSnapshot doc) {
@@ -48,15 +50,22 @@ class Recipe {
       totalTime: data['totalTime'] ?? 0,
       description: data['description'] ?? '',
       ingredients: (data['ingredients'] as List<dynamic>?)
-          ?.map((e) => Ingredient.fromMap(e))
-          .toList() ?? [],
+              ?.map((e) => Ingredient.fromMap(e))
+              .toList() ??
+          [],
       instructions: (data['instructions'] as List<dynamic>?)
-          ?.map((e) => Instruction.fromMap(e))
-          .toList() ?? [],
+              ?.map((e) => Instruction.fromMap(e))
+              .toList() ??
+          [],
       nutritionInfo: NutritionInfo.fromMap(data['nutritionInfo'] ?? {}),
       userId: data['userId'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      updatedAt: data['updatedAt'] != null
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      createdByName: data['createdByName'] ?? '-',
     );
   }
 
@@ -76,6 +85,7 @@ class Recipe {
       'userId': userId,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'createdByName': createdByName,
     };
   }
 }
@@ -136,12 +146,14 @@ class Instruction {
   final int stepNumber;
   final String description;
   final String? videoUrl;
-  final int? duration; // in seconds
+  final String? localVideoPath;
+  final int? duration;
 
   Instruction({
     required this.stepNumber,
     required this.description,
     this.videoUrl,
+    this.localVideoPath,
     this.duration,
   });
 
@@ -150,6 +162,7 @@ class Instruction {
       stepNumber: map['stepNumber'] ?? 0,
       description: map['description'] ?? '',
       videoUrl: map['videoUrl'],
+      localVideoPath: map['localVideoPath'],
       duration: map['duration'],
     );
   }
@@ -159,6 +172,7 @@ class Instruction {
       'stepNumber': stepNumber,
       'description': description,
       'videoUrl': videoUrl,
+      'localVideoPath': localVideoPath,
       'duration': duration,
     };
   }
@@ -202,4 +216,4 @@ class NutritionInfo {
       'sugar': sugar,
     };
   }
-} 
+}
