@@ -29,6 +29,31 @@ service cloud.firestore {
       allow create: if true;
     }
     
+    // Recipe collection security rules
+    match /recipes/{recipeId} {
+      // Allow authenticated users to read public recipes
+      allow read: if request.auth != null && resource.data.isPublic == true;
+      // Allow users to read their own recipes (public or private)
+      allow read: if request.auth != null && request.auth.uid == resource.data.authorId && isNotBanned();
+      // Allow admins to read all recipes
+      allow read: if isAdmin();
+      
+      // Allow users to create recipes if they are not banned
+      allow create: if request.auth != null && isNotBanned() && 
+                    request.auth.uid == request.resource.data.authorId;
+      
+      // Allow users to update their own recipes if not banned
+      allow update: if request.auth != null && isNotBanned() && 
+                    request.auth.uid == resource.data.authorId;
+      
+      // Allow users to delete their own recipes if not banned
+      allow delete: if request.auth != null && isNotBanned() && 
+                    request.auth.uid == resource.data.authorId;
+      
+      // Allow admins to update and delete any recipe
+      allow update, delete: if isAdmin();
+    }
+    
     // Admin actions records collection security rules
     match /adminActions/{actionId} {
       // Only admins can read and write admin action records

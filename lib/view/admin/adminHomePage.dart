@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import '../login.dart';
+import '../banned_account.dart';
 import 'adminprofilepage.dart';
+import 'admin_recipe_management.dart';
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({Key? key}) : super(key: key);
@@ -25,14 +28,157 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final AuthService _authService = AuthService();
+  bool _isVerifying = true;
+  bool _hasAccess = false;
 
   final List<Widget> _pages = [
     UserManagementPage(),
+    AdminRecipeManagement(),
     AdminProfilePage(),
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _verifyAdminAccess();
+  }
+
+  // Verify admin access on page load
+  Future<void> _verifyAdminAccess() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _redirectToLogin();
+        return;
+      }
+
+      // Get user data from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        await _authService.signout();
+        _redirectToLogin();
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final userType = userData['usertype']?.toString().toLowerCase().trim();
+
+      // Check if user is admin
+      if (userType != 'admin') {
+        await _authService.signout();
+        _redirectToLogin();
+        return;
+      }
+
+      // Check if admin is banned
+      bool isBanned = userData['isBanned'] == true || 
+                     userData['banned'] == true || 
+                     userData['is_banned'] == true;
+
+      if (isBanned) {
+        await _authService.signout();
+        _redirectToBanned();
+        return;
+      }
+
+      // Access granted
+      setState(() {
+        _hasAccess = true;
+        _isVerifying = false;
+      });
+
+    } catch (e) {
+      print('Admin verification error: $e');
+      await _authService.signout();
+      _redirectToLogin();
+    }
+  }
+
+  void _redirectToLogin() {
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );
+    }
+  }
+
+  void _redirectToBanned() {
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => BannedAccountPage(
+          reason: "Admin account has been suspended.")),
+        (route) => false,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Show loading while verifying access
+    if (_isVerifying) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.blue),
+              const SizedBox(height: 20),
+              Text(
+                'Verifying admin access...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show access denied if verification failed
+    if (!_hasAccess) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.security, size: 64, color: Colors.red),
+              const SizedBox(height: 20),
+              Text(
+                'Access Denied',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'You do not have admin privileges',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _redirectToLogin,
+                child: Text('Return to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show admin dashboard if access is granted
     return Scaffold(
       appBar: AppBar(
         title: Text('Admin Dashboard'),
@@ -63,6 +209,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.group),
             label: 'User Management',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant_menu),
+            label: 'Recipe Management',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
