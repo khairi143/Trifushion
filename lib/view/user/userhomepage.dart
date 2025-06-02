@@ -7,6 +7,9 @@ import 'myrecipespage.dart';
 import '../../view_models/home_view_model.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../banned_account.dart';
 
 class UserHomePage extends StatefulWidget {
   const UserHomePage({super.key});
@@ -18,6 +21,8 @@ class UserHomePage extends StatefulWidget {
 class _UserHomePageState extends State<UserHomePage> {
   int _currentIndex = 0;
   final AuthService _authService = AuthService();
+  bool _isVerifying = true;
+  bool _hasAccess = false;
   late HomeViewModel _viewModel;
 
   @override
@@ -25,6 +30,7 @@ class _UserHomePageState extends State<UserHomePage> {
     super.initState();
     _viewModel = HomeViewModel();
     _viewModel.initialize();
+    _verifyUserAccess();
   }
 
   @override
@@ -40,8 +46,141 @@ class _UserHomePageState extends State<UserHomePage> {
     UserProfilePage(),
   ];
 
+  // Verify user access on page load
+  Future<void> _verifyUserAccess() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _redirectToLogin();
+        return;
+      }
+
+      // Get user data from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        await _authService.signout();
+        _redirectToLogin();
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final userType = userData['usertype']?.toString().toLowerCase().trim();
+
+      // Check if user is regular user
+      if (userType != 'user') {
+        await _authService.signout();
+        _redirectToLogin();
+        return;
+      }
+
+      // Check if user is banned
+      bool isBanned = userData['isBanned'] == true || 
+                     userData['banned'] == true || 
+                     userData['is_banned'] == true;
+
+      if (isBanned) {
+        await _authService.signout();
+        String? banReason = await _authService.getBanReason(user.uid);
+        _redirectToBanned(banReason ?? "Your account has been suspended.");
+        return;
+      }
+
+      // Access granted
+      setState(() {
+        _hasAccess = true;
+        _isVerifying = false;
+      });
+
+    } catch (e) {
+      print('User verification error: $e');
+      await _authService.signout();
+      _redirectToLogin();
+    }
+  }
+
+  void _redirectToLogin() {
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );
+    }
+  }
+
+  void _redirectToBanned(String reason) {
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => BannedAccountPage(reason: reason)),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Show loading while verifying access
+    if (_isVerifying) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.blue),
+              const SizedBox(height: 20),
+              Text(
+                'Verifying access...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show access denied if verification failed
+    if (!_hasAccess) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.security, size: 64, color: Colors.red),
+              const SizedBox(height: 20),
+              Text(
+                'Access Denied',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Invalid account access',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _redirectToLogin,
+                child: Text('Return to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     _pages[0] = _buildHomeContent();
     
     return Scaffold(

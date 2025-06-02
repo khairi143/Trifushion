@@ -198,22 +198,25 @@ class LoginPage extends StatelessWidget {
                                   : () {
                                       viewModel.login(
                                         context,
-                                        () => Navigator.push(
+                                        // Admin callback - Clear navigation stack
+                                        () => Navigator.pushAndRemoveUntil(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AdminHomePage())),
-                                        () => Navigator.push(
+                                                builder: (_) => AdminHomePage()),
+                                            (route) => false),
+                                        // User callback - Clear navigation stack  
+                                        () => Navigator.pushAndRemoveUntil(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (_) =>
-                                                    UserHomePage())),
-                                        (reason) => Navigator.push(
+                                                builder: (_) => UserHomePage()),
+                                            (route) => false),
+                                        // Banned callback - Clear navigation stack
+                                        (reason) => Navigator.pushAndRemoveUntil(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (_) =>
-                                                    BannedAccountPage(
-                                                        reason: reason))),
+                                                builder: (_) => BannedAccountPage(
+                                                    reason: reason)),
+                                            (route) => false),
                                       );
                                     },
                               style: ElevatedButton.styleFrom(
