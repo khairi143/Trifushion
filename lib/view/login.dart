@@ -6,7 +6,13 @@ import '../view/user/usersignuppage.dart';
 import '../view/user/userhomepage.dart';
 import '../view/admin/adminHomePage.dart';
 import '../view/banned_account.dart';
+<<<<<<< HEAD
 import 'forgot_password_page.dart';
+=======
+import '../view/forgot_password_page.dart';
+import '../view/main_page.dart';
+import '../main.dart';
+>>>>>>> origin/main
 
 class LoginPage extends StatelessWidget {
   @override
@@ -14,7 +20,7 @@ class LoginPage extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => LoginViewModel(),
       child: Scaffold(
-        backgroundColor: Color.fromRGBO(246, 247, 252, 1),
+        backgroundColor: Color.fromRGBO(209, 224, 166, 1),
         body: Consumer<LoginViewModel>(
           // Listening for ViewModel changes
           builder: (context, viewModel, child) {
@@ -23,13 +29,13 @@ class LoginPage extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     image: DecorationImage(
-                      image: AssetImage('assets/background.png'),
+                      image: AssetImage('assets/images/background.png'),
                       fit: BoxFit.cover,
                       alignment: Alignment.centerLeft,
                     ),
                   ),
                 ),
-                Container(color: Color(0xFFD3BB).withOpacity(0.3)),
+                Container(color: Color.fromARGB(6, 116, 116, 116)),
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.only(
@@ -150,12 +156,35 @@ class LoginPage extends StatelessWidget {
                               if (viewModel.errorMessageController.text != "")
                                 Padding(
                                   padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    viewModel.errorMessageController.text,
-                                    style: TextStyle(color: Colors.red),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10, horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromARGB(86, 0, 0, 0),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      viewModel.errorMessageController.text,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => ForgotPasswordPage())),
+                                child: Text("Forgot Password",
+                                    style: TextStyle(
+                                      color: const Color.fromARGB(
+                                          255, 255, 235, 153),
+                                      decoration: TextDecoration.none,
+                                      height: 1.0,
+                                    )),
+                              ),
                               TextButton(
                                 onPressed: () => Navigator.push(
                                     context,
@@ -200,8 +229,7 @@ class LoginPage extends StatelessWidget {
                                         () => Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (_) =>
-                                                    UserHomePage())),
+                                                builder: (_) => MainScreen())),
                                         (reason) => Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -222,9 +250,10 @@ class LoginPage extends StatelessWidget {
                                       color: Colors.white)
                                   : Text('Log In',
                                       style: TextStyle(
+                                          fontFamily: 'Norwester',
                                           color: Colors.white,
                                           fontSize: 18,
-                                          fontWeight: FontWeight.bold)),
+                                          fontWeight: FontWeight.w500)),
                             ),
                           ),
                         ],

@@ -11,7 +11,7 @@ class ForgotPasswordViewModel extends ChangeNotifier {
 
   Future<void> sendResetLink() async {
     final email = emailController.text.trim();
-    
+
     if (email.isEmpty) {
       errorMessage = 'Please enter your email address';
       notifyListeners();
@@ -25,7 +25,7 @@ class ForgotPasswordViewModel extends ChangeNotifier {
       notifyListeners();
 
       await _authService.sendPasswordResetEmail(email);
-      
+
       successMessage = 'Password reset link sent to $email';
       errorMessage = null;
     } on FirebaseAuthException catch (e) {
