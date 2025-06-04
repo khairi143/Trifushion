@@ -76,8 +76,16 @@ class _RecipeListPageState extends State<RecipeListPage> {
                   },
                 ),
                 const SizedBox(width: 8),
-                ...['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Vegetarian', 'Vegan', 'Gluten-Free']
-                    .map((category) {
+                ...[
+                  'Breakfast',
+                  'Lunch',
+                  'Dinner',
+                  'Dessert',
+                  'Snack',
+                  'Vegetarian',
+                  'Vegan',
+                  'Gluten-Free'
+                ].map((category) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
@@ -101,7 +109,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
           Expanded(
             child: StreamBuilder<List<Recipe>>(
               stream: _searchQuery.isNotEmpty
-                  ? _recipeService.searchRecipes(_searchQuery)
+                  ? _recipeService.searchRecipesUser(_searchQuery)
                   : _selectedCategory != null
                       ? _recipeService.getRecipesByCategory(_selectedCategory!)
                       : _recipeService.getRecipes(),
@@ -131,8 +139,10 @@ class _RecipeListPageState extends State<RecipeListPage> {
                   itemBuilder: (context, index) {
                     final recipe = recipes[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       elevation: 2,
                       child: Row(
                         children: [
@@ -145,7 +155,9 @@ class _RecipeListPageState extends State<RecipeListPage> {
                                   bottomLeft: Radius.circular(16),
                                 ),
                                 child: Image.network(
-                                  recipe.coverImage.isNotEmpty ? recipe.coverImage : 'https://via.placeholder.com/110x80?text=No+Image',
+                                  recipe.coverImage.isNotEmpty
+                                      ? recipe.coverImage
+                                      : 'https://via.placeholder.com/110x80?text=No+Image',
                                   width: 110,
                                   height: 80,
                                   fit: BoxFit.cover,
@@ -155,15 +167,18 @@ class _RecipeListPageState extends State<RecipeListPage> {
                                 top: 6,
                                 left: 6,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: Colors.black.withOpacity(0.7),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     // Show total time as duration (hh:mm:ss)
-                                    _formatDuration(recipe.prepTime + recipe.cookTime),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                    _formatDuration(
+                                        recipe.prepTime + recipe.cookTime),
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12),
                                   ),
                                 ),
                               ),
@@ -180,7 +195,9 @@ class _RecipeListPageState extends State<RecipeListPage> {
                                   // Title
                                   Text(
                                     recipe.title,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -188,13 +205,21 @@ class _RecipeListPageState extends State<RecipeListPage> {
                                   // Meta row
                                   Row(
                                     children: [
-                                      Icon(Icons.visibility, size: 14, color: Colors.grey[600]),
+                                      Icon(Icons.visibility,
+                                          size: 14, color: Colors.grey[600]),
                                       const SizedBox(width: 2),
-                                      Text('-', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                      Text('-',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600])),
                                       const SizedBox(width: 10),
                                       Text(
-                                        recipe.createdAt != null ? _timeAgo(recipe.createdAt) : '-',
-                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                        recipe.createdAt != null
+                                            ? _timeAgo(recipe.createdAt)
+                                            : '-',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600]),
                                       ),
                                     ],
                                   ),
@@ -204,12 +229,15 @@ class _RecipeListPageState extends State<RecipeListPage> {
                                     children: [
                                       CircleAvatar(
                                         radius: 12,
-                                        backgroundImage: NetworkImage('https://ui-avatars.com/api/?name=${Uri.encodeComponent(recipe.createdByName)}'),
+                                        backgroundImage: NetworkImage(
+                                            'https://ui-avatars.com/api/?name=${Uri.encodeComponent(recipe.createdByName)}'),
                                         child: Icon(Icons.person, size: 16),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        recipe.createdByName.isNotEmpty ? recipe.createdByName : '-',
+                                        recipe.createdByName.isNotEmpty
+                                            ? recipe.createdByName
+                                            : '-',
                                         style: const TextStyle(fontSize: 13),
                                       ),
                                     ],
@@ -265,4 +293,4 @@ class _RecipeListPageState extends State<RecipeListPage> {
       return 'Just now';
     }
   }
-} 
+}

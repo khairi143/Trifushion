@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Original Recipe class for user view.
 class Recipe {
   final String id;
   final String title;

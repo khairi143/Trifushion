@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../models/recipe.dart';
+import '../models/recipe_model.dart';
 
 class RecipeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -14,7 +15,8 @@ class RecipeService {
       String? imageUrl;
       if (coverImage != null) {
         // Upload cover image to Firebase Storage
-        final storageRef = _storage.ref().child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final storageRef = _storage.ref().child(
+            'recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
         await storageRef.putFile(coverImage);
         imageUrl = await storageRef.getDownloadURL();
       }
@@ -69,12 +71,14 @@ class RecipeService {
   }
 
   // Update a recipe
-  Future<void> updateRecipe(String id, Recipe recipe, {File? newCoverImage}) async {
+  Future<void> updateRecipe(String id, Recipe recipe,
+      {File? newCoverImage}) async {
     try {
       String? imageUrl;
       if (newCoverImage != null) {
         // Upload new cover image
-        final storageRef = _storage.ref().child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final storageRef = _storage.ref().child(
+            'recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
         await storageRef.putFile(newCoverImage);
         imageUrl = await storageRef.getDownloadURL();
 
@@ -100,38 +104,6 @@ class RecipeService {
     }
   }
 
-  // Delete a recipe
-  Future<void> deleteRecipe(String id, String coverImageUrl) async {
-    try {
-      // Delete cover image from storage
-      if (coverImageUrl.isNotEmpty) {
-        try {
-          await _storage.refFromURL(coverImageUrl).delete();
-        } catch (e) {
-          print('Failed to delete image: $e');
-        }
-      }
-
-      // Delete recipe document
-      await _firestore.collection(_collection).doc(id).delete();
-    } catch (e) {
-      throw Exception('Failed to delete recipe: $e');
-    }
-  }
-
-  // Search recipes by title
-  Stream<List<Recipe>> searchRecipes(String query) {
-    return _firestore
-        .collection(_collection)
-        .where('title', isGreaterThanOrEqualTo: query)
-        .where('title', isLessThanOrEqualTo: query + '\uf8ff')
-        .orderBy('title')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
-    });
-  }
-
   // Get user's recipes
   Stream<List<Recipe>> getUserRecipes(String userId) {
     return _firestore
@@ -152,6 +124,208 @@ class RecipeService {
         .where("createdBy", isEqualTo: userId)
         .orderBy("createdAt", descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList());
   }
-} 
+
+  // Search recipes by title
+  Stream<List<Recipe>> searchRecipesUser(String query) {
+    return _firestore
+        .collection(_collection)
+        .where('title', isGreaterThanOrEqualTo: query)
+        .where('title', isLessThanOrEqualTo: query + '\uf8ff')
+        .orderBy('title')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => Recipe.fromFirestore(doc)).toList();
+    });
+  }
+
+  // Delete a recipe (Admin function)
+  Future<bool> deleteRecipe(String recipeId) async {
+    try {
+      await _firestore.collection(_collection).doc(recipeId).delete();
+
+      // Log admin action
+      await _logAdminAction('DELETE_RECIPE', {
+        'recipeId': recipeId,
+        'action': 'Recipe deleted by admin',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error deleting recipe: $e');
+      return false;
+    }
+  }
+
+  // Search recipes by title or description
+  Future<List<RecipeModel>> searchRecipes(String query) async {
+    try {
+      // Note: This is a basic search. For production, consider using Algolia or Elasticsearch
+      QuerySnapshot snapshot = await _firestore
+          .collection(_collection)
+          .where('isPublic', isEqualTo: true)
+          .get();
+
+      List<RecipeModel> allRecipes = snapshot.docs
+          .map((doc) =>
+              RecipeModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+
+      // Filter recipes that contain the query in title or description
+      return allRecipes
+          .where((recipe) =>
+              recipe.title.toLowerCase().contains(query.toLowerCase()) ||
+              recipe.description.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    } catch (e) {
+      print('Error searching recipes: $e');
+      return [];
+    }
+  }
+
+  // Get recipe statistics (for admin dashboard)
+  Future<Map<String, int>> getRecipeStatistics() async {
+    try {
+      QuerySnapshot allRecipes = await _firestore.collection(_collection).get();
+      QuerySnapshot publicRecipes = await _firestore
+          .collection(_collection)
+          .where('isPublic', isEqualTo: true)
+          .get();
+
+      return {
+        'totalRecipes': allRecipes.docs.length,
+        'publicRecipes': publicRecipes.docs.length,
+        'privateRecipes': allRecipes.docs.length - publicRecipes.docs.length,
+      };
+    } catch (e) {
+      print('Error getting recipe statistics: $e');
+      return {
+        'totalRecipes': 0,
+        'publicRecipes': 0,
+        'privateRecipes': 0,
+      };
+    }
+  }
+
+  // Get all recipes (for admin)
+  Stream<List<RecipeModel>> getAllRecipes() {
+    return _firestore
+        .collection(_collection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Stream<List<RecipeModel>> getRecipesByAuthor(String authorId) {
+    return _firestore
+        .collection(_collection)
+        .where('authorId', isEqualTo: authorId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get recipes with pagination (for better performance)
+  Future<List<RecipeModel>> getRecipesWithPagination({
+    int limit = 20,
+    DocumentSnapshot? lastDocument,
+    bool publicOnly = false,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection(_collection)
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+
+      if (publicOnly) {
+        query = query.where('isPublic', isEqualTo: true);
+      }
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      QuerySnapshot snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) =>
+              RecipeModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    } catch (e) {
+      print('Error getting recipes with pagination: $e');
+      return [];
+    }
+  }
+
+  // Log admin actions
+  Future<void> _logAdminAction(
+      String actionType, Map<String, dynamic> details) async {
+    try {
+      await _firestore.collection('adminActions').add({
+        'actionType': actionType,
+        'details': details,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error logging admin action: $e');
+    }
+  }
+
+  // Bulk delete recipes (Admin function)
+  Future<int> bulkDeleteRecipes(List<String> recipeIds) async {
+    int deletedCount = 0;
+    WriteBatch batch = _firestore.batch();
+
+    try {
+      for (String recipeId in recipeIds) {
+        DocumentReference docRef =
+            _firestore.collection(_collection).doc(recipeId);
+        batch.delete(docRef);
+      }
+
+      await batch.commit();
+      deletedCount = recipeIds.length;
+
+      // Log admin action
+      await _logAdminAction('BULK_DELETE_RECIPES', {
+        'recipeIds': recipeIds,
+        'deletedCount': deletedCount,
+        'action': 'Bulk delete recipes by admin',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error in bulk delete: $e');
+    }
+
+    return deletedCount;
+  }
+
+  // Toggle recipe visibility (Admin function)
+  Future<bool> toggleRecipeVisibility(String recipeId, bool isPublic) async {
+    try {
+      await _firestore.collection(_collection).doc(recipeId).update({
+        'isPublic': isPublic,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Log admin action
+      await _logAdminAction('TOGGLE_RECIPE_VISIBILITY', {
+        'recipeId': recipeId,
+        'isPublic': isPublic,
+        'action': 'Recipe visibility toggled by admin',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error toggling recipe visibility: $e');
+      return false;
+    }
+  }
+}
