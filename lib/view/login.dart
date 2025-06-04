@@ -6,13 +6,9 @@ import '../view/user/usersignuppage.dart';
 import '../view/user/userhomepage.dart';
 import '../view/admin/adminHomePage.dart';
 import '../view/banned_account.dart';
-<<<<<<< HEAD
-import 'forgot_password_page.dart';
-=======
 import '../view/forgot_password_page.dart';
 import '../view/main_page.dart';
 import '../main.dart';
->>>>>>> origin/main
 
 class LoginPage extends StatelessWidget {
   @override
