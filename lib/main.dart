@@ -14,6 +14,8 @@ import 'view/recipe/recipe_list_page.dart';
 import 'view/user/searchpage.dart';
 import 'view/my_recipes/my_recipes_page.dart';
 import 'view/user/userprofilepage.dart';
+import 'view/recipe/edit_recipe_page.dart';
+import 'view_models/recipe_form_page_vm.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,7 @@ class MyApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => RecipeFormViewModel()), 
         ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
       ],
       child: MaterialApp(

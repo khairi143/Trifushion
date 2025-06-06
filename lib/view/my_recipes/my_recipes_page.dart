@@ -5,6 +5,7 @@ import '../../models/recipe.dart';
 import '../../services/recipe_service.dart';
 import '../recipe/recipe_detail_page.dart';
 import '../recipe/recipe_form_page.dart';
+import '../recipe/edit_recipe_page.dart';
 
 class MyRecipesPage extends StatefulWidget {
   MyRecipesPage({Key? key}) : super(key: key);
@@ -94,6 +95,7 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
             final recipeId = bookmark.get("recipeId") as String?;
             print('Bookmark recipeId: $recipeId');
             if (recipeId == null) return SizedBox.shrink();
+
             return StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance.collection("recipes").doc(recipeId).snapshots(),
               builder: (context, recipeSnapshot) {
@@ -107,6 +109,7 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
                 print('Recipe data for $recipeId: $recipeData');
                 if (recipeData == null) return SizedBox.shrink();
                 final recipe = Recipe.fromFirestore(recipeSnapshot.data!);
+
                 return Card(
                   margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   elevation: 2,
@@ -145,21 +148,80 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
           itemCount: myRecipes.length,
           itemBuilder: (context, i) {
             final recipe = myRecipes[i];
+
             return Card(
               margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
-                leading: recipe.coverImage != null ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(recipe.coverImage!, width: 60, height: 60, fit: BoxFit.cover)) : Icon(Icons.image, size: 60, color: Colors.grey),
+                leading: recipe.coverImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(recipe.coverImage!, width: 60, height: 60, fit: BoxFit.cover),
+                      )
+                    : Icon(Icons.image, size: 60, color: Colors.grey),
                 title: Text(recipe.title, style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(recipe.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-                trailing: Icon(Icons.chevron_right),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () => _navigateToEditRecipePage(recipe),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () => _deleteRecipe(recipe),
+                    ),
+                  ],
+                ),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RecipeDetailPage(recipe: recipe))),
               ),
             );
           },
         );
       },
+    );
+  }
+
+  // Edit recipe
+  void _navigateToEditRecipePage(Recipe recipe) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditRecipePage(recipe: recipe),
+      ),
+    );
+  }
+
+  // Delete recipe
+  void _deleteRecipe(Recipe recipe) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Delete Recipe"),
+        content: Text("Are you sure you want to delete this recipe?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              bool success = await _recipeService.userDeleteRecipe(recipe.id, _currentUserId, recipe.coverImage ?? '');
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Recipe deleted successfully')));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting recipe')));
+              }
+            },
+            child: Text("Delete"),
+          ),
+        ],
+      ),
     );
   }
 

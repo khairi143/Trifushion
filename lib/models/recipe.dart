@@ -38,6 +38,44 @@ class Recipe {
     required this.createdByName,
   });
 
+  // Add the copyWith method to update a recipe fields
+  Recipe copyWith({
+    String? title,
+    String? coverImage,
+    int? servings,
+    int? prepTime,
+    List<String>? categories,
+    int? cookTime,
+    int? totalTime,
+    String? description,
+    List<Ingredient>? ingredients,
+    List<Instruction>? instructions,
+    NutritionInfo? nutritionInfo,
+    String? userId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? createdByName,
+  }) {
+    return Recipe(
+      id: this.id,
+      title: title ?? this.title,
+      coverImage: coverImage ?? this.coverImage,
+      servings: servings ?? this.servings,
+      prepTime: prepTime ?? this.prepTime,
+      categories: categories ?? this.categories,
+      cookTime: cookTime ?? this.cookTime,
+      totalTime: totalTime ?? this.totalTime,
+      description: description ?? this.description,
+      ingredients: ingredients ?? this.ingredients,
+      instructions: instructions ?? this.instructions,
+      nutritionInfo: nutritionInfo ?? this.nutritionInfo,
+      userId: userId ?? this.userId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdByName: createdByName ?? this.createdByName,
+    );
+  }
+
   factory Recipe.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Recipe(

@@ -76,13 +76,11 @@ class RecipeService {
     try {
       String? imageUrl;
       if (newCoverImage != null) {
-        // Upload new cover image
         final storageRef = _storage.ref().child(
             'recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
         await storageRef.putFile(newCoverImage);
         imageUrl = await storageRef.getDownloadURL();
 
-        // Delete old image if exists
         if (recipe.coverImage.isNotEmpty) {
           try {
             await _storage.refFromURL(recipe.coverImage).delete();
@@ -103,6 +101,55 @@ class RecipeService {
       throw Exception('Failed to update recipe: $e');
     }
   }
+  
+  Future<String> uploadImageToStorage(File coverImage) async {
+  try {
+    final storageRef = _storage.ref().child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+    await storageRef.putFile(File(coverImage.path));
+    return await storageRef.getDownloadURL();
+  } catch (e) {
+    throw Exception('Failed to upload image: $e');
+  }
+}
+
+  
+// Delete recipe (User)
+Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageUrl) async {
+  try {
+    // Get the recipe document to verify the user who created it
+    final doc = await _firestore.collection(_collection).doc(recipeId).get();
+
+    if (!doc.exists) {
+      throw Exception('Recipe not found');
+    }
+
+    // Get user from the recipe data to verify ownership
+    final recipeData = doc.data() as Map<String, dynamic>;
+    final createdBy = recipeData['createdBy'];
+
+    if (createdBy != userId) {
+      throw Exception('You do not have permission to delete this recipe');
+    }
+
+    await _firestore.collection(_collection).doc(recipeId).delete();
+
+    // delete image
+    if (coverImageUrl.isNotEmpty) {
+      try {
+        await _storage.refFromURL(coverImageUrl).delete();
+        print("Cover image deleted successfully");
+      } catch (e) {
+        print("Error deleting cover image: $e");
+      }
+    }
+
+    return true;
+  } catch (e) {
+    print('Error deleting recipe: $e');
+    return false;
+  }
+}
+
 
   // Get user's recipes
   Stream<List<Recipe>> getUserRecipes(String userId) {
