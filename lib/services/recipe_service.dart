@@ -237,22 +237,13 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
   Future<Map<String, int>> getRecipeStatistics() async {
     try {
       QuerySnapshot allRecipes = await _firestore.collection(_collection).get();
-      QuerySnapshot publicRecipes = await _firestore
-          .collection(_collection)
-          .where('isPublic', isEqualTo: true)
-          .get();
-
       return {
         'totalRecipes': allRecipes.docs.length,
-        'publicRecipes': publicRecipes.docs.length,
-        'privateRecipes': allRecipes.docs.length - publicRecipes.docs.length,
       };
     } catch (e) {
       print('Error getting recipe statistics: $e');
       return {
         'totalRecipes': 0,
-        'publicRecipes': 0,
-        'privateRecipes': 0,
       };
     }
   }
@@ -272,11 +263,16 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
     return _firestore
         .collection(_collection)
         .where('authorId', isEqualTo: authorId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          List<RecipeModel> recipes = snapshot.docs
+              .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
+              .toList();
+          
+          // Sort by creation date in memory to avoid index requirement
+          recipes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return recipes;
+        });
   }
 
   // Get recipes with pagination (for better performance)
@@ -351,28 +347,5 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
     }
 
     return deletedCount;
-  }
-
-  // Toggle recipe visibility (Admin function)
-  Future<bool> toggleRecipeVisibility(String recipeId, bool isPublic) async {
-    try {
-      await _firestore.collection(_collection).doc(recipeId).update({
-        'isPublic': isPublic,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Log admin action
-      await _logAdminAction('TOGGLE_RECIPE_VISIBILITY', {
-        'recipeId': recipeId,
-        'isPublic': isPublic,
-        'action': 'Recipe visibility toggled by admin',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      return true;
-    } catch (e) {
-      print('Error toggling recipe visibility: $e');
-      return false;
-    }
   }
 }
