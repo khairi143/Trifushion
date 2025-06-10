@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:chewie/chewie.dart';
-import 'package:video_player/video_player.dart';
 import '../../models/recipe.dart';
-import '../../services/auth_service.dart';
-import '../../services/recipe_service.dart';
-import 'recipe_form_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../view_models/recipe_detail_page_vm.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
@@ -20,357 +15,429 @@ class RecipeDetailPage extends StatefulWidget {
 
 class _RecipeDetailPageState extends State<RecipeDetailPage>
     with SingleTickerProviderStateMixin {
-  final _recipeService = RecipeService();
-  ChewieController? _chewieController;
-  VideoPlayerController? _videoController;
-  int _currentStep = 0;
-  late TabController _tabController;
-  bool isBookmarked = false;
-  late String _currentUserId;
+  late RecipeDetailViewModel viewModel;
+  bool _showTimeDetails = false;
+  bool _showNutritionDetails = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    _checkBookmark();
-    if (widget.recipe.instructions.isNotEmpty) {
-      _loadVideo(widget.recipe.instructions[0].videoUrl);
-    }
+    viewModel = RecipeDetailViewModel(
+      recipe: widget.recipe,
+      vsync: this, // Only pass this ONCE
+    );
+    viewModel.initPreviewControllers(this);
   }
 
   @override
   void dispose() {
-    _chewieController?.dispose();
-    _videoController?.dispose();
-    _tabController.dispose();
+    viewModel.disposeControllers();
+    viewModel.tabController.dispose();
     super.dispose();
-  }
-
-  void _loadVideo(String? videoUrl) {
-    if (videoUrl == null) return;
-    _videoController?.dispose();
-    _chewieController?.dispose();
-    _videoController = VideoPlayerController.network(videoUrl);
-    _chewieController = ChewieController(
-      videoPlayerController: _videoController!,
-      autoPlay: false,
-      looping: false,
-      aspectRatio: 16 / 9,
-    );
-  }
-
-  void _nextStep() {
-    if (_currentStep < widget.recipe.instructions.length - 1) {
-      setState(() {
-        _currentStep++;
-        _loadVideo(widget.recipe.instructions[_currentStep].videoUrl);
-      });
-    }
-  }
-
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-        _loadVideo(widget.recipe.instructions[_currentStep].videoUrl);
-      });
-    }
-  }
-
-  Future<void> _checkBookmark() async {
-    if (_currentUserId.isEmpty) return;
-    final doc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(_currentUserId)
-        .collection("bookmarks")
-        .doc(widget.recipe.id)
-        .get();
-    if (mounted) {
-      setState(() {
-        isBookmarked = doc.exists;
-      });
-    }
-  }
-
-  Future<void> _toggleBookmark() async {
-    if (_currentUserId.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Please log in to bookmark.")));
-      return;
-    }
-    final docRef = FirebaseFirestore.instance
-        .collection("users")
-        .doc(_currentUserId)
-        .collection("bookmarks")
-        .doc(widget.recipe.id);
-    if (isBookmarked) {
-      await docRef.delete();
-    } else {
-      await docRef.set({
-        "recipeId": widget.recipe.id,
-        "savedAt": FieldValue.serverTimestamp()
-      });
-    }
-    if (mounted) {
-      setState(() {
-        isBookmarked = !isBookmarked;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOwner =
-        context.read<AuthService>().currentUser?.uid == widget.recipe.userId;
-    final authorEmail =
-        widget.recipe.userId.isNotEmpty ? widget.recipe.userId : '-';
-    final recipe = widget.recipe;
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Stack(
-        children: [
-          // Cover Image
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Image.network(
-              recipe.coverImage.isNotEmpty
-                  ? recipe.coverImage
-                  : 'https://via.placeholder.com/400x300?text=No+Image',
-              height: 280,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          // Bookmark button
-          Positioned(
-            top: 40,
-            right: 16,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: IconButton(
-                icon: Icon(
-                    isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                    color: Colors.redAccent),
-                onPressed: _toggleBookmark,
+    const iconSize = 18.0;
+    final Color? iconColor = Colors.grey[700];
+    return ChangeNotifierProvider.value(
+      value: viewModel,
+      child: Consumer<RecipeDetailViewModel>(
+        builder: (context, vm, _) {
+          final recipe = vm.recipe;
+          return Scaffold(
+            backgroundColor: Colors.grey[100],
+            appBar: AppBar(
+              title: Text(recipe.title),
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back),
+                tooltip: 'Back to Listing',
+                onPressed: () {
+                  Navigator.pop(context, vm);
+                },
               ),
             ),
-          ),
-          // Main Card
-          Positioned(
-            top: 220,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SingleChildScrollView(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 0),
-                padding: const EdgeInsets.only(
-                    top: 40, left: 24, right: 24, bottom: 24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
+            body: Stack(
+              children: [
+                // Cover Image
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Image.network(
+                    recipe.coverImage.isNotEmpty
+                        ? recipe.coverImage
+                        : 'https://via.placeholder.com/400x300?text=No+Image',
+                    height: 280,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 16,
-                      offset: Offset(0, -4),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title & Description
-                    Text(
-                      recipe.title.isNotEmpty ? recipe.title : '-',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                // Bookmark button (logic can be moved to ViewModel)
+                Positioned(
+                  top: 40,
+                  right: 16,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: IconButton(
+                      icon: Icon(
+                          vm.isBookmarked
+                              ? Icons.bookmark
+                              : Icons.bookmark_border,
+                          color: Colors.redAccent),
+                      onPressed: () {
+                        vm.toggleBookmark(context);
+                      },
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      recipe.description.isNotEmpty ? recipe.description : '-',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    // Time, Difficulty, Calories
-                    Row(
-                      children: [
-                        Icon(Icons.timer, size: 18, color: Colors.grey[700]),
-                        const SizedBox(width: 4),
-                        Text(
-                            '${recipe.prepTime > 0 ? recipe.prepTime : '-'} Min'),
-                        const SizedBox(width: 16),
-                        Icon(Icons.local_fire_department,
-                            size: 18, color: Colors.grey[700]),
-                        const SizedBox(width: 4),
-                        Text(
-                            '${recipe.nutritionInfo.calories > 0 ? recipe.nutritionInfo.calories.round() : '-'} Cal'),
-                        const SizedBox(width: 16),
-                        Icon(Icons.signal_cellular_alt,
-                            size: 18, color: Colors.grey[700]),
-                        const SizedBox(width: 4),
-                        Text(recipe.categories.isNotEmpty
-                            ? recipe.categories.first
-                            : '-'),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Author
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.grey[300],
-                          child: Icon(Icons.person, color: Colors.white),
+                  ),
+                ),
+                // Main Card
+                Positioned(
+                  top: 220,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SingleChildScrollView(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 0),
+                      padding: const EdgeInsets.only(
+                          top: 40, left: 24, right: 24, bottom: 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
                         ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (recipe.createdByName.isNotEmpty
-                                  ? recipe.createdByName
-                                  : (recipe.userId.isNotEmpty
-                                      ? recipe.userId
-                                      : '-')),
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Text('Recipe Author',
-                                style: TextStyle(
-                                    color: Colors.grey[600], fontSize: 12)),
-                          ],
-                        ),
-                        Spacer(),
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[200],
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
-                            elevation: 0,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: Offset(0, -4),
                           ),
-                          child: Text('+ Follow'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Tab Bar
-                    TabBar(
-                      controller: _tabController,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.black,
-                      indicator: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        color: Colors.redAccent,
+                        ],
                       ),
-                      tabs: const [
-                        Tab(text: 'Ingredients'),
-                        Tab(text: 'Instructions'),
-                        Tab(text: 'Review'),
-                      ],
-                    ),
-                    SizedBox(
-                      height: 320,
-                      child: TabBarView(
-                        controller: _tabController,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Ingredients Tab
-                          recipe.ingredients.isNotEmpty
-                              ? ListView.separated(
-                                  itemCount: recipe.ingredients.length,
-                                  separatorBuilder: (context, i) => Divider(),
-                                  itemBuilder: (context, i) {
-                                    final ing = recipe.ingredients[i];
-                                    return ListTile(
-                                      leading: Text('${i + 1}'.padLeft(2, '0')),
-                                      title: Text(
-                                          ing.name.isNotEmpty ? ing.name : '-'),
-                                      subtitle: Text(
-                                        (ing.amount > 0
-                                                ? ing.amount.toString()
-                                                : '-') +
-                                            (ing.unit.isNotEmpty
-                                                ? ' ${ing.unit}'
-                                                : ''),
+                          // Title & Description
+                          Text(
+                            recipe.title.isNotEmpty ? recipe.title : '-',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            recipe.description.isNotEmpty
+                                ? recipe.description
+                                : '-',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 16),
+                          // Time, Difficulty, Calories
+                          Row(
+                            children: [
+                              // Servings
+                              Icon(Icons.people,
+                                  size: iconSize, color: iconColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                  '${recipe.servings > 0 ? recipe.servings : '-'} Servings'),
+                              const SizedBox(width: 16),
+
+                              // Total Time (expandable)
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () => setState(() {
+                                    _showTimeDetails = !_showTimeDetails;
+                                    _showNutritionDetails = false;
+                                  }),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.access_time,
+                                          size: iconSize, color: iconColor),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${(recipe.prepTime + recipe.cookTime) > 0 ? (recipe.prepTime + recipe.cookTime) : '-'} Min Total',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                    );
-                                  },
-                                )
-                              : Center(child: Text('No ingredients.')),
-                          // Instructions Tab
-                          recipe.instructions.isNotEmpty
-                              ? ListView.separated(
-                                  itemCount: recipe.instructions.length,
-                                  separatorBuilder: (context, i) => Divider(),
-                                  itemBuilder: (context, i) {
-                                    final step = recipe.instructions[i];
-                                    return ExpansionTile(
-                                      leading: Text('${i + 1}'.padLeft(2, '0')),
-                                      title: Text(step.description.isNotEmpty
-                                          ? step.description
-                                          : '-'),
-                                      children: [
-                                        if (step.videoUrl != null &&
-                                            step.videoUrl!.isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: AspectRatio(
-                                              aspectRatio: 16 / 9,
-                                              child: Chewie(
-                                                controller: ChewieController(
-                                                  videoPlayerController:
-                                                      VideoPlayerController
-                                                          .networkUrl(Uri.parse(
-                                                              step.videoUrl!)),
-                                                  autoPlay: false,
-                                                  looping: false,
-                                                  aspectRatio: 16 / 9,
-                                                ),
-                                              ),
+                                      Icon(
+                                        _showTimeDetails
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                        size: 18,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+
+                              // Calories (expandable)
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () => setState(() {
+                                    _showNutritionDetails =
+                                        !_showNutritionDetails;
+                                    _showTimeDetails = false;
+                                  }),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.local_fire_department,
+                                          size: iconSize, color: iconColor),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${recipe.nutritionInfo.calories > 0 ? recipe.nutritionInfo.calories.round() : '-'} Cal',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Icon(
+                                        _showNutritionDetails
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                        size: 18,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+
+                              // Categories
+                              Icon(Icons.signal_cellular_alt,
+                                  size: iconSize, color: iconColor),
+                              const SizedBox(width: 4),
+                              Text(recipe.categories.isNotEmpty
+                                  ? recipe.categories.first
+                                  : '-'),
+                            ],
+                          ),
+                          // Expanded Time Details
+                          if (_showTimeDetails)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 32, top: 4, bottom: 4),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.timer, size: 16, color: iconColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                      'Prep: ${recipe.prepTime > 0 ? recipe.prepTime : '-'} min'),
+                                  const SizedBox(width: 16),
+                                  Icon(Icons.timer_outlined,
+                                      size: 16, color: iconColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                      'Cook: ${recipe.cookTime > 0 ? recipe.cookTime : '-'} min'),
+                                ],
+                              ),
+                            ),
+                          // Expanded Nutrition Details
+                          if (_showNutritionDetails)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 32, top: 4, bottom: 4),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.fastfood,
+                                      size: 16, color: iconColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                      'Carbs: ${recipe.nutritionInfo.carbs > 0 ? recipe.nutritionInfo.carbs.round() : '-'} g'),
+                                  const SizedBox(width: 16),
+                                  Icon(Icons.local_dining,
+                                      size: 16, color: iconColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                      'Protein: ${recipe.nutritionInfo.protein > 0 ? recipe.nutritionInfo.protein.round() : '-'} g'),
+                                  const SizedBox(width: 16),
+                                  Icon(Icons.restaurant,
+                                      size: 16, color: iconColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                      'Fat: ${recipe.nutritionInfo.fat > 0 ? recipe.nutritionInfo.fat.round() : '-'} g'),
+                                ],
+                              ),
+                            ),
+
+                          const SizedBox(height: 16),
+                          // Author
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Colors.grey[300],
+                                child: Icon(Icons.person, color: Colors.white),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    (recipe.createdByName.isNotEmpty
+                                        ? recipe.createdByName
+                                        : (recipe.userId.isNotEmpty
+                                            ? recipe.userId
+                                            : '-')),
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  Text('Recipe Author',
+                                      style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12)),
+                                ],
+                              ),
+                              Spacer(),
+                              // hide when recipe owner is the current user
+                              if (recipe.userId != vm.currentUserId)
+                                ElevatedButton(
+                                  onPressed: () {},
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[200],
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(24)),
+                                    elevation: 0,
+                                  ),
+                                  child: Text('+ Follow'),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          // Tab Bar
+                          TabBar(
+                            controller: vm.tabController,
+                            labelColor: Colors.white,
+                            unselectedLabelColor: Colors.black,
+                            indicator: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(24), // Less rounded
+                              color: const Color.fromARGB(255, 255, 57, 57),
+                            ),
+                            indicatorPadding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            tabs: const [
+                              Tab(text: 'Ingredients'),
+                              Tab(text: 'Instructions'),
+                              Tab(text: 'Review'),
+                            ],
+                          ),
+                          SizedBox(
+                            height: 320,
+                            child: TabBarView(
+                              controller: vm.tabController,
+                              children: [
+                                // Ingredients Tab
+                                recipe.ingredients.isNotEmpty
+                                    ? ListView.separated(
+                                        itemCount: recipe.ingredients.length,
+                                        separatorBuilder: (context, i) =>
+                                            Divider(),
+                                        itemBuilder: (context, i) {
+                                          final ing = recipe.ingredients[i];
+                                          return ListTile(
+                                            leading: Text(
+                                                '${i + 1}'.padLeft(2, '0')),
+                                            title: Text(ing.name.isNotEmpty
+                                                ? ing.name
+                                                : '-'),
+                                            subtitle: Text(
+                                              (ing.amount > 0
+                                                      ? ing.amount.toString()
+                                                      : '-') +
+                                                  (ing.unit.isNotEmpty
+                                                      ? ' ${ing.unit}'
+                                                      : ''),
                                             ),
-                                          ),
-                                        if (step.duration != null)
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Text(
-                                                'Duration: ${step.duration} seconds'),
-                                          ),
-                                      ],
-                                    );
-                                  },
-                                )
-                              : Center(child: Text('No instructions.')),
-                          // Review Tab
-                          Center(child: Text('No reviews yet.')),
+                                          );
+                                        },
+                                      )
+                                    : Center(child: Text('No ingredients.')),
+                                // Instructions Tab
+                                recipe.instructions.isNotEmpty
+                                    ? ListView.separated(
+                                        itemCount: recipe.instructions.length,
+                                        separatorBuilder: (context, i) =>
+                                            Divider(),
+                                        itemBuilder: (context, i) {
+                                          final step = recipe.instructions[i];
+                                          final controller =
+                                              vm.previewControllers[i];
+                                          return ExpansionTile(
+                                            leading: Text(
+                                                '${i + 1}'.padLeft(2, '0')),
+                                            title: Text(
+                                                step.description.isNotEmpty
+                                                    ? step.description
+                                                    : '-'),
+                                            children: [
+                                              if (controller != null &&
+                                                  controller
+                                                      .value.isInitialized)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(8.0),
+                                                  child: AspectRatio(
+                                                    aspectRatio: controller
+                                                        .value.aspectRatio,
+                                                    child: Chewie(
+                                                      controller:
+                                                          ChewieController(
+                                                        videoPlayerController:
+                                                            controller,
+                                                        autoPlay: false,
+                                                        looping: false,
+                                                        aspectRatio: 16 / 9,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (step.duration != null)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(8.0),
+                                                  child: Text(
+                                                      'Duration: ${step.duration} seconds'),
+                                                ),
+                                            ],
+                                          );
+                                        },
+                                      )
+                                    : Center(child: Text('No instructions.')),
+                                // Review Tab
+                                Center(child: Text('No reviews yet.')),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                // Back Button
+                Positioned(
+                  top: 40,
+                  left: 16,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: IconButton(
+                      icon: Icon(Icons.arrow_back, color: Colors.black),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          // Back Button
-          Positioned(
-            top: 40,
-            left: 16,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

@@ -350,6 +350,7 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
           'createdBy': currentUser.uid,
+          'userId': currentUser.uid,
           'createdByEmail': currentUser.email,
           'createdByName': currentUser.displayName ?? currentUser.email ?? '-',
         });

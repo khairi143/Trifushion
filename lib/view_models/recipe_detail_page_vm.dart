@@ -3,63 +3,54 @@ import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 import '../../models/recipe.dart';
 
 class RecipeDetailViewModel extends ChangeNotifier {
   final Recipe recipe;
   late TabController tabController;
   ChewieController? chewieController;
-  VideoPlayerController? videoController;
   int currentStep = 0;
   bool isBookmarked = false;
   late String currentUserId;
-  final TickerProvider tickerProvider;
 
   RecipeDetailViewModel({
     required this.recipe,
-    required this.tickerProvider,
+    required TickerProvider vsync,
   }) {
-    tabController = TabController(length: 3, vsync: tickerProvider);
+    tabController = TabController(length: 3, vsync: vsync);
     currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     checkBookmark();
-    if (recipe.instructions.isNotEmpty) {
-      loadVideo(recipe.instructions[0].videoUrl);
+    initPreviewControllers(vsync);
+  }
+
+  final Map<int, VideoPlayerController?> previewControllers = {};
+
+  Future<void> initPreviewControllers(TickerProvider vsync) async {
+    for (var i = 0; i < recipe.instructions.length; i++) {
+      final instruction = recipe.instructions[i];
+      VideoPlayerController? controller;
+      final localVideoPath = instruction.localVideoPath;
+      final videoUrl = instruction.videoUrl;
+
+      if (localVideoPath != null && localVideoPath.isNotEmpty) {
+        controller = VideoPlayerController.file(File(localVideoPath));
+      } else if (videoUrl != null && videoUrl.isNotEmpty) {
+        controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      }
+      if (controller != null) {
+        await controller.initialize();
+        previewControllers[i] = controller;
+      } else {
+        previewControllers[i] = null;
+      }
     }
-  }
-
-  void disposeControllers() {
-    chewieController?.dispose();
-    videoController?.dispose();
-    tabController.dispose();
-  }
-
-  void loadVideo(String? videoUrl) {
-    if (videoUrl == null) return;
-    videoController?.dispose();
-    chewieController?.dispose();
-    videoController = VideoPlayerController.network(videoUrl);
-    chewieController = ChewieController(
-      videoPlayerController: videoController!,
-      autoPlay: false,
-      looping: false,
-      aspectRatio: 16 / 9,
-    );
     notifyListeners();
   }
 
-  void nextStep() {
-    if (currentStep < recipe.instructions.length - 1) {
-      currentStep++;
-      loadVideo(recipe.instructions[currentStep].videoUrl);
-      notifyListeners();
-    }
-  }
-
-  void previousStep() {
-    if (currentStep > 0) {
-      currentStep--;
-      loadVideo(recipe.instructions[currentStep].videoUrl);
-      notifyListeners();
+  void disposeControllers() {
+    for (final controller in previewControllers.values) {
+      controller?.dispose();
     }
   }
 
