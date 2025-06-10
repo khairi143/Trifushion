@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../models/recipe.dart';  // Import Recipe model
+
 
 class RecipeFormViewModel extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
@@ -35,6 +37,31 @@ class RecipeFormViewModel extends ChangeNotifier {
     'Vegan',
     'Gluten-Free',
   ];
+
+void initializeWithRecipe(Recipe recipe) {
+  titleController.text = recipe.title;
+  descriptionController.text = recipe.description;
+  servingsController.text = recipe.servings.toString();
+  prepTimeController.text = recipe.prepTime.toString();
+  cookTimeController.text = recipe.cookTime.toString();
+
+  selectedCategories = List<String>.from(recipe.categories);
+
+  coverImage = XFile(recipe.coverImage);
+
+  ingredients = List<Map<String, dynamic>>.from(recipe.ingredients);
+  instructions = List<Map<String, dynamic>>.from(recipe.instructions);
+
+  nutritionInfo = {
+      'calories': recipe.nutritionInfo.calories,
+      'protein': recipe.nutritionInfo.protein,
+      'carbs': recipe.nutritionInfo.carbs,
+      'fat': recipe.nutritionInfo.fat,
+  };
+
+  notifyListeners();
+}
+
 
   void setCoverImage(XFile? image) {
     coverImage = image;

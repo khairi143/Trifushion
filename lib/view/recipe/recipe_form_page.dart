@@ -14,7 +14,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:html' as html; // Required for web video preview
 import '../../view_models/recipe_form_page_vm.dart';
-import 'recipe_preview.dart'; // Add this import if RecipePreviewPage is defined in this file, otherwise define the widget below.
+import 'recipe_preview.dart';
+import '../../view_models/recipe_preview.dart'; // Import the RecipePreviewPage widget
+// Add this import if RecipePreviewPage is defined in this file, otherwise define the widget below.
 
 class RecipeFormPage extends StatelessWidget {
   final Recipe? recipe; // If provided, we're editing an existing recipe
@@ -372,7 +374,9 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
                   final returnedViewModel = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => RecipePreviewPage(viewModel: viewModel),
+                      builder: (_) => RecipePreviewPage(
+                          viewModel:
+                              RecipePreviewViewModel(formViewModel: viewModel)),
                     ),
                   );
                   setState(() {});

@@ -5,6 +5,8 @@ import '../../models/recipe.dart';
 import '../../services/recipe_service.dart';
 import '../recipe/recipe_detail_page.dart';
 import '../recipe/recipe_form_page.dart';
+//import '../recipe/edit_recipe_page.dart';
+import '../recipe/recipe_edit_page.dart';
 
 class MyRecipesPage extends StatefulWidget {
   MyRecipesPage({Key? key}) : super(key: key);
@@ -13,7 +15,8 @@ class MyRecipesPage extends StatefulWidget {
   _MyRecipesPageState createState() => _MyRecipesPageState();
 }
 
-class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProviderStateMixin {
+class _MyRecipesPageState extends State<MyRecipesPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final RecipeService _recipeService = RecipeService();
   late String _currentUserId;
@@ -63,7 +66,9 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
           }
         },
         child: Icon(Icons.add),
-        tooltip: _tabController.index == 0 ? 'Create New Cookbook' : 'Create New Recipe',
+        tooltip: _tabController.index == 0
+            ? 'Create New Cookbook'
+            : 'Create New Recipe',
       ),
     );
   }
@@ -94,8 +99,12 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
             final recipeId = bookmark.get("recipeId") as String?;
             print('Bookmark recipeId: $recipeId');
             if (recipeId == null) return SizedBox.shrink();
+
             return StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance.collection("recipes").doc(recipeId).snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection("recipes")
+                  .doc(recipeId)
+                  .snapshots(),
               builder: (context, recipeSnapshot) {
                 if (recipeSnapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -103,20 +112,34 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
                 if (recipeSnapshot.hasError || !recipeSnapshot.hasData) {
                   return SizedBox.shrink();
                 }
-                final recipeData = recipeSnapshot.data!.data() as Map<String, dynamic>?;
+                final recipeData =
+                    recipeSnapshot.data!.data() as Map<String, dynamic>?;
                 print('Recipe data for $recipeId: $recipeData');
                 if (recipeData == null) return SizedBox.shrink();
                 final recipe = Recipe.fromFirestore(recipeSnapshot.data!);
+
                 return Card(
                   margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
-                    leading: recipe.coverImage != null ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(recipe.coverImage!, width: 60, height: 60, fit: BoxFit.cover)) : Icon(Icons.image, size: 60, color: Colors.grey),
-                    title: Text(recipe.title, style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(recipe.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    leading: recipe.coverImage != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(recipe.coverImage!,
+                                width: 60, height: 60, fit: BoxFit.cover))
+                        : Icon(Icons.image, size: 60, color: Colors.grey),
+                    title: Text(recipe.title,
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(recipe.description,
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
                     trailing: Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RecipeDetailPage(recipe: recipe))),
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                RecipeDetailPage(recipe: recipe))),
                   ),
                 );
               },
@@ -145,16 +168,42 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
           itemCount: myRecipes.length,
           itemBuilder: (context, i) {
             final recipe = myRecipes[i];
+
             return Card(
               margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               child: ListTile(
-                leading: recipe.coverImage != null ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(recipe.coverImage!, width: 60, height: 60, fit: BoxFit.cover)) : Icon(Icons.image, size: 60, color: Colors.grey),
-                title: Text(recipe.title, style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(recipe.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-                trailing: Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RecipeDetailPage(recipe: recipe))),
+                leading: recipe.coverImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(recipe.coverImage!,
+                            width: 60, height: 60, fit: BoxFit.cover),
+                      )
+                    : Icon(Icons.image, size: 60, color: Colors.grey),
+                title: Text(recipe.title,
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(recipe.description,
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () => _navigateToEditRecipePage(recipe),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () => _deleteRecipe(recipe),
+                    ),
+                  ],
+                ),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            RecipeDetailPage(recipe: recipe))),
               ),
             );
           },
@@ -163,7 +212,51 @@ class _MyRecipesPageState extends State<MyRecipesPage> with SingleTickerProvider
     );
   }
 
+  // Edit recipe
+  void _navigateToEditRecipePage(Recipe recipe) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditRecipePage(recipe: recipe),
+      ),
+    );
+  }
+
+  // Delete recipe
+  void _deleteRecipe(Recipe recipe) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Delete Recipe"),
+        content: Text("Are you sure you want to delete this recipe?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              bool success = await _recipeService.userDeleteRecipe(
+                  recipe.id, _currentUserId, recipe.coverImage ?? '');
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Recipe deleted successfully')));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting recipe')));
+              }
+            },
+            child: Text("Delete"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showCreateCookbookDialog(BuildContext context) {
     // Implementation of _showCreateCookbookDialog method
   }
-} 
+}
