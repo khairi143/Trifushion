@@ -4,12 +4,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'package:chewie/chewie.dart';
-import '../../view_models/recipe_form_page_vm.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../view_models/recipe_preview.dart';
 
 class RecipePreviewPage extends StatefulWidget {
-  final RecipeFormViewModel viewModel;
+  final RecipePreviewViewModel viewModel;
 
   const RecipePreviewPage({Key? key, required this.viewModel})
       : super(key: key);
