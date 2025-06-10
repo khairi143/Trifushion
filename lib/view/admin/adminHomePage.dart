@@ -464,7 +464,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 if (snapshot.hasData) {
                   int totalUsers = 0;
                   int bannedUsers = 0;
-                  int adminUsers = 0;
 
                   for (var doc in snapshot.data!.docs) {
                     var userData = doc.data() as Map<String, dynamic>;
@@ -477,8 +476,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       if (isBanned) {
                         bannedUsers++;
                       }
-                    } else if (userData['usertype'] == 'admin') {
-                      adminUsers++;
                     }
                   }
 
@@ -491,8 +488,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
                           (totalUsers - bannedUsers).toString(), Colors.green, Icons.check_circle),
                       _buildStatCard(
                           'Banned Users', bannedUsers.toString(), Colors.red, Icons.block),
-                      _buildStatCard(
-                          'Admins', adminUsers.toString(), Colors.purple, Icons.admin_panel_settings),
                     ],
                   );
                 } else {

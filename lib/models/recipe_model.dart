@@ -55,12 +55,11 @@ class RecipeModel {
     return RecipeModel(
       id: documentId,
       title: _parseString(map['title']) ?? 'Untitled Recipe',
-      description:
-          _parseString(map['description']) ?? 'No description available',
+      description: _parseString(map['description']) ?? 'No description available',
       imageUrl: _parseString(map['imageUrl']) ?? '',
       rating: _parseDouble(map['rating']) ?? 0.0,
-      authorId: _parseString(map['authorId']) ?? '',
-      authorName: _parseString(map['authorName']) ?? 'Unknown User',
+      authorId: _parseString(map['createdBy']) ?? _parseString(map['authorId']) ?? '',
+      authorName: _parseString(map['createdByName']) ?? _parseString(map['authorName']) ?? '',
       ingredients: _parseStringList(map['ingredients']) ?? [],
       instructions: _parseStringList(map['instructions']) ?? [],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
