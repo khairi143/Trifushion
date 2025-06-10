@@ -327,6 +327,14 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
           };
         }).toList();
 
+        // Prepare nutrition info
+        final nutritionInfo = {
+          'calories': int.tryParse(viewModel.caloriesController.text) ?? 0,
+          'protein': int.tryParse(viewModel.proteinController.text) ?? 0,
+          'carbs': int.tryParse(viewModel.carbsController.text) ?? 0,
+          'fat': int.tryParse(viewModel.fatController.text) ?? 0,
+        };
+
         // Save to Firestore
         await FirebaseFirestore.instance.collection('recipes').add({
           'title': viewModel.titleController.text,
@@ -338,7 +346,7 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
           'categories': viewModel.selectedCategories,
           'ingredients': viewModel.ingredients,
           'instructions': sanitizedInstructions,
-          'nutritionInfo': viewModel.nutritionInfo,
+          'nutritionInfo': nutritionInfo,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
           'createdBy': currentUser.uid,

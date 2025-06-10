@@ -68,6 +68,12 @@ class EditRecipeViewModel extends ChangeNotifier {
       'carbs': recipe.nutritionInfo.carbs,
       'fat': recipe.nutritionInfo.fat,
     };
+
+    caloriesController.text = nutritionInfo['calories'].toString();
+    proteinController.text = nutritionInfo['protein'].toString();
+    carbsController.text = nutritionInfo['carbs'].toString();
+    fatController.text = nutritionInfo['fat'].toString();
+
     notifyListeners();
   }
 
@@ -456,6 +462,25 @@ class EditRecipeViewModel extends ChangeNotifier {
       changed['instructions'] = sanitizedInstructions;
     }
 
+    // Nutrition info
+    if (caloriesController.text !=
+        _originalRecipe.nutritionInfo.calories.toString()) {
+      changed['nutritionInfo']['calories'] =
+          int.tryParse(caloriesController.text) ?? 0;
+    }
+    if (proteinController.text !=
+        _originalRecipe.nutritionInfo.protein.toString()) {
+      changed['nutritionInfo']['protein'] =
+          int.tryParse(proteinController.text) ?? 0;
+    }
+    if (carbsController.text !=
+        _originalRecipe.nutritionInfo.carbs.toString()) {
+      changed['nutritionInfo']['carbs'] =
+          int.tryParse(carbsController.text) ?? 0;
+    }
+    if (fatController.text != _originalRecipe.nutritionInfo.fat.toString()) {
+      changed['nutritionInfo']['fat'] = int.tryParse(fatController.text) ?? 0;
+    }
     return changed;
   }
 

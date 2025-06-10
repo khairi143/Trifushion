@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../models/recipe.dart';  // Import Recipe model
-
+import '../../models/recipe.dart'; // Import Recipe model
 
 class RecipeFormViewModel extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
@@ -38,30 +37,34 @@ class RecipeFormViewModel extends ChangeNotifier {
     'Gluten-Free',
   ];
 
-void initializeWithRecipe(Recipe recipe) {
-  titleController.text = recipe.title;
-  descriptionController.text = recipe.description;
-  servingsController.text = recipe.servings.toString();
-  prepTimeController.text = recipe.prepTime.toString();
-  cookTimeController.text = recipe.cookTime.toString();
+  void initializeWithRecipe(Recipe recipe) {
+    titleController.text = recipe.title;
+    descriptionController.text = recipe.description;
+    servingsController.text = recipe.servings.toString();
+    prepTimeController.text = recipe.prepTime.toString();
+    cookTimeController.text = recipe.cookTime.toString();
 
-  selectedCategories = List<String>.from(recipe.categories);
+    selectedCategories = List<String>.from(recipe.categories);
 
-  coverImage = XFile(recipe.coverImage);
+    coverImage = XFile(recipe.coverImage);
 
-  ingredients = List<Map<String, dynamic>>.from(recipe.ingredients);
-  instructions = List<Map<String, dynamic>>.from(recipe.instructions);
+    ingredients = List<Map<String, dynamic>>.from(recipe.ingredients);
+    instructions = List<Map<String, dynamic>>.from(recipe.instructions);
 
-  nutritionInfo = {
+    nutritionInfo = {
       'calories': recipe.nutritionInfo.calories,
       'protein': recipe.nutritionInfo.protein,
       'carbs': recipe.nutritionInfo.carbs,
       'fat': recipe.nutritionInfo.fat,
-  };
+    };
 
-  notifyListeners();
-}
+    caloriesController.text = nutritionInfo['calories'].toString();
+    proteinController.text = nutritionInfo['protein'].toString();
+    carbsController.text = nutritionInfo['carbs'].toString();
+    fatController.text = nutritionInfo['fat'].toString();
 
+    notifyListeners();
+  }
 
   void setCoverImage(XFile? image) {
     coverImage = image;
@@ -98,16 +101,6 @@ void initializeWithRecipe(Recipe recipe) {
     } else {
       selectedCategories.remove(category);
     }
-    notifyListeners();
-  }
-
-  void updateNutritionInfo() {
-    nutritionInfo = {
-      'calories': double.tryParse(caloriesController.text) ?? 0,
-      'protein': double.tryParse(proteinController.text) ?? 0,
-      'carbs': double.tryParse(carbsController.text) ?? 0,
-      'fat': double.tryParse(fatController.text) ?? 0,
-    };
     notifyListeners();
   }
 
