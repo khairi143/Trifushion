@@ -139,11 +139,6 @@ class EditRecipeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> saveRecipe(BuildContext context) async {
-    //TODO: Convert new Recipe
-    return true;
-  }
-
   Future<String> supabaseUpload({
     required String bucket,
     required String path,
@@ -447,8 +442,9 @@ class EditRecipeViewModel extends ChangeNotifier {
       return {
         'step': instruction['step'],
         'description': instruction['description'],
-        'videoUrl':
-            instruction['video'] is String ? instruction['video'] : null,
+        'videoUrl': instruction['video'] is String
+            ? instruction['video']
+            : instruction['videoUrl'],
       };
     }).toList();
 
