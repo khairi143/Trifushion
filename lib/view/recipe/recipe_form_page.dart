@@ -261,19 +261,19 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
               );
 
               instruction.videoUrl = response; // 🟢 store the URL string
-              showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                        title: Text('Video Uploaded'),
-                        content: Text(
-                            'The video for step ${instruction.stepNumber} has been uploaded successfully.$response'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text('OK'),
-                          ),
-                        ],
-                      ));
+              // showDialog(
+              //     context: context,
+              //     builder: (context) => AlertDialog(
+              //           title: Text('Video Uploaded'),
+              //           content: Text(
+              //               'The video for step ${instruction.stepNumber} has been uploaded successfully.$response'),
+              //           actions: [
+              //             TextButton(
+              //               onPressed: () => Navigator.pop(context),
+              //               child: Text('OK'),
+              //             ),
+              //           ],
+              //         ));
             } else {
               final file = File(xfile.path);
               int fileSize = await file.length();
@@ -301,19 +301,19 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
               );
 
               instruction.videoUrl = response; // 🟢 store the URL string
-              showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                        title: Text('Video Uploaded'),
-                        content: Text(
-                            'The video for step ${instruction.stepNumber} has been uploaded successfully.$response'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text('OK'),
-                          ),
-                        ],
-                      ));
+              // showDialog(
+              //     context: context,
+              //     builder: (context) => AlertDialog(
+              //           title: Text('Video Uploaded'),
+              //           content: Text(
+              //               'The video for step ${instruction.stepNumber} has been uploaded successfully.$response'),
+              //           actions: [
+              //             TextButton(
+              //               onPressed: () => Navigator.pop(context),
+              //               child: Text('OK'),
+              //             ),
+              //           ],
+              //         ));
             }
           }
         }

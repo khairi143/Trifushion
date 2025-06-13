@@ -142,8 +142,61 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
                                 Icon(Icons.people,
                                     size: iconSize, color: iconColor),
                                 const SizedBox(width: 4),
-                                Text(
-                                    '${recipe.servings > 0 ? recipe.servings : '-'} Servings'),
+                                vm.editingServings
+                                    ? SizedBox(
+                                        width: 60,
+                                        child: TextField(
+                                          controller: vm.servingsController,
+                                          keyboardType: TextInputType.number,
+                                          autofocus: true,
+                                          onSubmitted: (value) {
+                                            final newValue =
+                                                int.tryParse(value);
+                                            if (newValue != null &&
+                                                newValue > 0) {
+                                              vm.updateServings(
+                                                  newValue); // Implement this in your ViewModel
+                                            }
+                                            setState(() =>
+                                                vm.editingServings = false);
+                                          },
+                                          decoration: InputDecoration(
+                                            hintText: 'Servings',
+                                            suffixIcon: IconButton(
+                                              icon: Icon(Icons.check,
+                                                  color: Colors.green),
+                                              tooltip: 'Update',
+                                              onPressed: () {
+                                                final newValue = int.tryParse(
+                                                    vm.servingsController.text);
+                                                if (newValue != null &&
+                                                    newValue > 0) {
+                                                  vm.updateServings(newValue);
+                                                }
+                                                setState(() =>
+                                                    vm.editingServings = false);
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            vm.servingsController.text =
+                                                recipe.servings.toString();
+                                            setState(() =>
+                                                vm.editingServings = true);
+                                          },
+                                          child: Text(
+                                            '${recipe.servings > 0 ? recipe.servings : '-'} Servings',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                 const SizedBox(width: 16),
 
                                 // Total Time (expandable)

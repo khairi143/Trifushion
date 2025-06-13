@@ -19,6 +19,8 @@ class RecipeDetailViewModel extends ChangeNotifier {
   int? editingIngredientsIndex;
   final TextEditingController editingController = TextEditingController();
   CaloriesNinjaService caloriesNinjaService = CaloriesNinjaService();
+  final TextEditingController servingsController = TextEditingController();
+  bool editingServings = false;
 
   RecipeDetailViewModel({
     required this.recipe,
@@ -90,6 +92,28 @@ class RecipeDetailViewModel extends ChangeNotifier {
           {"recipeId": recipe.id, "savedAt": FieldValue.serverTimestamp()});
     }
     isBookmarked = !isBookmarked;
+    notifyListeners();
+  }
+
+  void startEditingServings(int servings) {
+    servingsController.text = servings.toString();
+    notifyListeners();
+  }
+
+  void updateServings(int value) {
+    if (value <= 0) return;
+
+    // Calculate the ratio
+    final ratio = value / recipe.servings;
+
+    // Update all ingredient amounts based on the ratio
+    for (var ing in recipe.ingredients) {
+      ing.amount = (ing.amount * ratio);
+    }
+
+    recipe.servings = value;
+    editingController.clear();
+    updateNutritionInfo();
     notifyListeners();
   }
 

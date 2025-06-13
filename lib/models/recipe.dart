@@ -8,7 +8,7 @@ class Recipe {
   final String id;
   final String title;
   final String coverImage;
-  final int servings;
+  int servings;
   final int prepTime; // in minutes
   final List<String> categories;
   final int cookTime; // in minutes
