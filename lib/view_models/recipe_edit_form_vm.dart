@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import '../../models/nutrition_model.dart';
 import '../../models/ingredient_model.dart';
 import '../../models/instruction_model.dart';
+import '../../services/caloriesninja_service.dart';
 
 class EditRecipeViewModel extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
@@ -28,6 +29,7 @@ class EditRecipeViewModel extends ChangeNotifier {
   final fatController = TextEditingController();
   final fiberController = TextEditingController();
   final sugarController = TextEditingController();
+  CaloriesNinjaService caloriesNinjaService = CaloriesNinjaService();
 
   XFile? coverImage;
   List<String> selectedCategories = [];
@@ -117,11 +119,13 @@ class EditRecipeViewModel extends ChangeNotifier {
 
   void addIngredient(Map<String, dynamic> ingredient) {
     ingredients.add(Ingredient.fromMap(ingredient));
+    updateNutritionInfo();
     notifyListeners();
   }
 
   void removeIngredient(int index) {
     ingredients.removeAt(index);
+    updateNutritionInfo();
     notifyListeners();
   }
 
@@ -385,12 +389,12 @@ class EditRecipeViewModel extends ChangeNotifier {
     // Compare ingredients and instructions as needed
     if (ingredients.toString() !=
         _originalRecipe.ingredients.map((i) => i.toMap()).toList().toString()) {
-      changed['ingredients'] = ingredients;
+      changed['ingredients'] = ingredients.map((i) => i.toMap()).toList();
     }
     // Nutrition info
     if (nutritionInfo.toString() !=
         _originalRecipe.nutritionInfo.toMap().toString()) {
-      changed['nutritionInfo'] = nutritionInfo;
+      changed['nutritionInfo'] = nutritionInfo.toMap();
     }
     // Compare instructions
     for (var instruction in instructions) {
@@ -462,27 +466,6 @@ class EditRecipeViewModel extends ChangeNotifier {
       changed['instructions'] = sanitizedInstructions;
     }
 
-    // Nutrition info
-    if (caloriesController.text !=
-        _originalRecipe.nutritionInfo.calories.toString()) {
-      changed['nutritionInfo']['calories'] =
-          int.tryParse(caloriesController.text) ?? 0;
-    }
-    if (proteinController.text !=
-        _originalRecipe.nutritionInfo.protein_g.toString()) {
-      changed['nutritionInfo']['protein_g'] =
-          int.tryParse(proteinController.text) ?? 0;
-    }
-    if (carbsController.text !=
-        _originalRecipe.nutritionInfo.carbohydrates_total_g.toString()) {
-      changed['nutritionInfo']['carbohydrates_total_g'] =
-          int.tryParse(carbsController.text) ?? 0;
-    }
-    if (fatController.text !=
-        _originalRecipe.nutritionInfo.fat_total_g.toString()) {
-      changed['nutritionInfo']['fat_total_g'] =
-          int.tryParse(fatController.text) ?? 0;
-    }
     return changed;
   }
 
@@ -491,5 +474,24 @@ class EditRecipeViewModel extends ChangeNotifier {
     if (changedFields.isNotEmpty) {
       await recipeRef.update(changedFields);
     }
+  }
+
+  void updateNutritionInfo() async {
+    // make ingredients list into a string
+    final ingredientsList =
+        caloriesNinjaService.convertToQueryString(ingredients);
+
+    if (ingredientsList.isNotEmpty) {
+      nutritionInfo =
+          await caloriesNinjaService.fetchNutritionInfo(ingredientsList);
+      caloriesController.text = nutritionInfo.calories.toString();
+      proteinController.text = nutritionInfo.protein_g.toString();
+      carbsController.text = nutritionInfo.carbohydrates_total_g.toString();
+      fatController.text = nutritionInfo.fat_total_g.toString();
+      fiberController.text = nutritionInfo.fiber_g.toString();
+      sugarController.text = nutritionInfo.sugar_g.toString();
+    }
+
+    notifyListeners();
   }
 }

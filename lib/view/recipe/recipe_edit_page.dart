@@ -206,22 +206,49 @@ class _EditRecipePageBodyState extends State<_EditRecipePageBody> {
                   // Nutrition Info
                   Text('Nutrition Information',
                       style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                      'Now Nutrition Information will auto calculate based on ingredients',
+                      style: Theme.of(context).textTheme.labelSmall),
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: viewModel.caloriesController,
-                          decoration:
-                              InputDecoration(labelText: 'Calories (kcal)'),
-                          keyboardType: TextInputType.number,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Calories (kcal)',
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium),
+                              Text(
+                                viewModel.caloriesController.text.isEmpty
+                                    ? '0'
+                                    : viewModel.caloriesController.text,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(width: 16),
                       Expanded(
-                        child: TextFormField(
-                          controller: viewModel.proteinController,
-                          decoration: InputDecoration(labelText: 'Protein (g)'),
-                          keyboardType: TextInputType.number,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Protein (g)',
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium),
+                              Text(
+                                viewModel.proteinController.text.isEmpty
+                                    ? '0'
+                                    : viewModel.proteinController.text,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -230,18 +257,43 @@ class _EditRecipePageBodyState extends State<_EditRecipePageBody> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: viewModel.carbsController,
-                          decoration: InputDecoration(labelText: 'Carbs (g)'),
-                          keyboardType: TextInputType.number,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Carbs (g)',
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium),
+                              Text(
+                                viewModel.carbsController.text.isEmpty
+                                    ? '0'
+                                    : viewModel.carbsController.text,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(width: 16),
                       Expanded(
-                        child: TextFormField(
-                          controller: viewModel.fatController,
-                          decoration: InputDecoration(labelText: 'Fat (g)'),
-                          keyboardType: TextInputType.number,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Fat (g)',
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium),
+                              Text(
+                                viewModel.fatController.text.isEmpty
+                                    ? '0'
+                                    : viewModel.fatController.text,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

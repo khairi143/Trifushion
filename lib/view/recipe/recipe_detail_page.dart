@@ -53,7 +53,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
                 CustomScrollView(
                   slivers: [
                     SliverAppBar(
-                      expandedHeight: 280,
+                      expandedHeight: 300,
                       pinned: true,
                       stretch: true,
                       backgroundColor: Colors.white,
@@ -64,7 +64,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
                               : 'https://via.placeholder.com/400x300?text=No+Image',
                           fit: BoxFit.cover,
                           width: double.infinity,
-                          height: 280,
+                          height: 300,
                         ),
                       ),
                       leading: Padding(
