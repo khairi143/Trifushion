@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../view_models/recipe_form_page_vm.dart';
 import '../../view_models/recipe_edit_form_vm.dart';
+import '../../models/ingredient_model.dart';
+import '../../models/instruction_model.dart';
+import '../../models/nutrition_model.dart';
 
 class RecipePreviewViewModel extends ChangeNotifier {
   final RecipeFormViewModel? formViewModel;
@@ -32,7 +35,7 @@ class RecipePreviewViewModel extends ChangeNotifier {
   TextEditingController get fatController => activeViewModel.fatController;
   XFile? get coverImage => activeViewModel.coverImage;
   List<String> get selectedCategories => activeViewModel.selectedCategories;
-  List<Map<String, dynamic>> get ingredients => activeViewModel.ingredients;
-  List<Map<String, dynamic>> get instructions => activeViewModel.instructions;
-  Map<String, dynamic> get nutritionInfo => activeViewModel.nutritionInfo;
+  List<Ingredient> get ingredients => activeViewModel.ingredients;
+  List<Instruction> get instructions => activeViewModel.instructions;
+  NutritionInfo get nutritionInfo => activeViewModel.nutritionInfo;
 }

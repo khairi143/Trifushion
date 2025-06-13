@@ -273,9 +273,9 @@ class _EditRecipePageBodyState extends State<_EditRecipePageBody> {
                     itemBuilder: (context, index) {
                       final ingredient = viewModel.ingredients[index];
                       return ListTile(
-                        title: Text(ingredient['name']),
-                        subtitle: Text(
-                            '${ingredient['amount']} ${ingredient['unit']}'),
+                        title: Text(ingredient.name),
+                        subtitle:
+                            Text('${ingredient.amount} ${ingredient.unit}'),
                         trailing: IconButton(
                           icon: Icon(Icons.delete),
                           onPressed: () {
@@ -314,8 +314,8 @@ class _EditRecipePageBodyState extends State<_EditRecipePageBody> {
                         final instruction = viewModel.instructions[index];
                         return ListTile(
                           leading: CircleAvatar(
-                              child: Text('${instruction['step']}')),
-                          title: Text(instruction['description']),
+                              child: Text('${instruction.stepNumber}')),
+                          title: Text(instruction.description),
                           trailing: IconButton(
                             icon: Icon(Icons.delete),
                             onPressed: () {

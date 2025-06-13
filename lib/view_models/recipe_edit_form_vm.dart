@@ -11,6 +11,9 @@ import 'package:video_player/video_player.dart';
 import 'package:video_compress/video_compress.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../../models/nutrition_model.dart';
+import '../../models/ingredient_model.dart';
+import '../../models/instruction_model.dart';
 
 class EditRecipeViewModel extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
@@ -23,17 +26,21 @@ class EditRecipeViewModel extends ChangeNotifier {
   final proteinController = TextEditingController();
   final carbsController = TextEditingController();
   final fatController = TextEditingController();
+  final fiberController = TextEditingController();
+  final sugarController = TextEditingController();
 
   XFile? coverImage;
   List<String> selectedCategories = [];
-  List<Map<String, dynamic>> ingredients = [];
-  List<Map<String, dynamic>> instructions = [];
-  Map<String, dynamic> nutritionInfo = {
-    'calories': 0,
-    'protein': 0,
-    'carbs': 0,
-    'fat': 0,
-  };
+  List<Ingredient> ingredients = [];
+  List<Instruction> instructions = [];
+  NutritionInfo nutritionInfo = NutritionInfo(
+    calories: 0,
+    protein_g: 0,
+    carbohydrates_total_g: 0,
+    fat_total_g: 0,
+    fiber_g: 0,
+    sugar_g: 0,
+  );
 
   final List<String> availableCategories = [
     'Breakfast',
@@ -57,22 +64,17 @@ class EditRecipeViewModel extends ChangeNotifier {
     cookTimeController.text = recipe.cookTime.toString();
     selectedCategories = List<String>.from(recipe.categories);
     coverImage = XFile(recipe.coverImage);
+    ingredients = recipe.ingredients;
+    instructions = recipe.instructions;
 
-    // FIX: Convert Ingredient/Instruction objects to Map
-    ingredients = recipe.ingredients.map((i) => i.toMap()).toList();
-    instructions = recipe.instructions.map((i) => i.toMap()).toList();
+    nutritionInfo = recipe.nutritionInfo;
 
-    nutritionInfo = {
-      'calories': recipe.nutritionInfo.calories,
-      'protein': recipe.nutritionInfo.protein,
-      'carbs': recipe.nutritionInfo.carbs,
-      'fat': recipe.nutritionInfo.fat,
-    };
-
-    caloriesController.text = nutritionInfo['calories'].toString();
-    proteinController.text = nutritionInfo['protein'].toString();
-    carbsController.text = nutritionInfo['carbs'].toString();
-    fatController.text = nutritionInfo['fat'].toString();
+    caloriesController.text = nutritionInfo.calories.toString();
+    proteinController.text = nutritionInfo.protein_g.toString();
+    carbsController.text = nutritionInfo.carbohydrates_total_g.toString();
+    fatController.text = nutritionInfo.fat_total_g.toString();
+    fiberController.text = nutritionInfo.fiber_g.toString();
+    sugarController.text = nutritionInfo.sugar_g.toString();
 
     notifyListeners();
   }
@@ -114,7 +116,7 @@ class EditRecipeViewModel extends ChangeNotifier {
   }
 
   void addIngredient(Map<String, dynamic> ingredient) {
-    ingredients.add(ingredient);
+    ingredients.add(Ingredient.fromMap(ingredient));
     notifyListeners();
   }
 
@@ -124,14 +126,14 @@ class EditRecipeViewModel extends ChangeNotifier {
   }
 
   void addInstruction(Map<String, dynamic> instruction) {
-    instructions.add(instruction);
+    instructions.add(Instruction.fromMap(instruction));
     notifyListeners();
   }
 
   void removeInstruction(int index) {
     instructions.removeAt(index);
     for (var i = 0; i < instructions.length; i++) {
-      instructions[i]['step'] = i + 1;
+      instructions[i].stepNumber = i + 1;
     }
     notifyListeners();
   }
@@ -393,8 +395,8 @@ class EditRecipeViewModel extends ChangeNotifier {
     // Compare instructions
     for (var instruction in instructions) {
       // If the videoi is not null and is an xFile, upload it
-      if (instruction['video'] != null && instruction['video'] is XFile) {
-        final xfile = instruction['video'] as XFile;
+      if (instruction.video != null && instruction.video is XFile) {
+        final xfile = instruction.video as XFile;
 
         if (kIsWeb) {
           final fileSize = await xfile.length();
@@ -407,12 +409,12 @@ class EditRecipeViewModel extends ChangeNotifier {
           final response = await supabaseUpload(
             bucket: 'instructionvideos',
             path:
-                '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
+                '${DateTime.now().millisecondsSinceEpoch}_${instruction.stepNumber}.mp4',
             fileOrBytes: bytes,
             contentType: 'video/mp4',
           );
 
-          instruction['video'] = response; // 🟢 store the URL string
+          instruction.videoUrl = response; // 🟢 store the URL string
         } else {
           final file = File(xfile.path);
           int fileSize = await file.length();
@@ -434,23 +436,21 @@ class EditRecipeViewModel extends ChangeNotifier {
           final response = await supabaseUpload(
             bucket: 'instructionvideos',
             path:
-                '${DateTime.now().millisecondsSinceEpoch}_${instruction['step']}.mp4',
+                '${DateTime.now().millisecondsSinceEpoch}_${instruction.stepNumber}.mp4',
             fileOrBytes: fileToUpload,
             contentType: 'video/mp4',
           );
 
-          instruction['video'] = response; // 🟢 store the URL string
+          instruction.videoUrl = response; // 🟢 store the URL string
         }
       }
     }
     // Prepare instructions for Firestore
     final sanitizedInstructions = instructions.map((instruction) {
       return {
-        'step': instruction['step'],
-        'description': instruction['description'],
-        'videoUrl': instruction['video'] is String
-            ? instruction['video']
-            : instruction['videoUrl'],
+        'step': instruction.stepNumber,
+        'description': instruction.description,
+        'videoUrl': instruction.videoUrl,
       };
     }).toList();
 
@@ -469,17 +469,19 @@ class EditRecipeViewModel extends ChangeNotifier {
           int.tryParse(caloriesController.text) ?? 0;
     }
     if (proteinController.text !=
-        _originalRecipe.nutritionInfo.protein.toString()) {
-      changed['nutritionInfo']['protein'] =
+        _originalRecipe.nutritionInfo.protein_g.toString()) {
+      changed['nutritionInfo']['protein_g'] =
           int.tryParse(proteinController.text) ?? 0;
     }
     if (carbsController.text !=
-        _originalRecipe.nutritionInfo.carbs.toString()) {
-      changed['nutritionInfo']['carbs'] =
+        _originalRecipe.nutritionInfo.carbohydrates_total_g.toString()) {
+      changed['nutritionInfo']['carbohydrates_total_g'] =
           int.tryParse(carbsController.text) ?? 0;
     }
-    if (fatController.text != _originalRecipe.nutritionInfo.fat.toString()) {
-      changed['nutritionInfo']['fat'] = int.tryParse(fatController.text) ?? 0;
+    if (fatController.text !=
+        _originalRecipe.nutritionInfo.fat_total_g.toString()) {
+      changed['nutritionInfo']['fat_total_g'] =
+          int.tryParse(fatController.text) ?? 0;
     }
     return changed;
   }

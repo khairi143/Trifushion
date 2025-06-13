@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'ingredient_model.dart';
+import 'instruction_model.dart';
+import 'nutrition_model.dart';
 
 // Original Recipe class for user view.
 class Recipe {
@@ -125,134 +128,6 @@ class Recipe {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'createdByName': createdByName,
-    };
-  }
-}
-
-class Ingredient {
-  final String name;
-  final double amount;
-  final String unit;
-  final double calories;
-  final double protein;
-  final double carbs;
-  final double fat;
-  final double fiber;
-  final double sugar;
-
-  Ingredient({
-    required this.name,
-    required this.amount,
-    required this.unit,
-    required this.calories,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
-    required this.fiber,
-    required this.sugar,
-  });
-
-  factory Ingredient.fromMap(Map<String, dynamic> map) {
-    return Ingredient(
-      name: map['name'] ?? '',
-      amount: (map['amount'] ?? 0.0).toDouble(),
-      unit: map['unit'] ?? '',
-      calories: (map['calories'] ?? 0.0).toDouble(),
-      protein: (map['protein'] ?? 0.0).toDouble(),
-      carbs: (map['carbs'] ?? 0.0).toDouble(),
-      fat: (map['fat'] ?? 0.0).toDouble(),
-      fiber: (map['fiber'] ?? 0.0).toDouble(),
-      sugar: (map['sugar'] ?? 0.0).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'amount': amount,
-      'unit': unit,
-      'calories': calories,
-      'protein': protein,
-      'carbs': carbs,
-      'fat': fat,
-      'fiber': fiber,
-      'sugar': sugar,
-    };
-  }
-}
-
-class Instruction {
-  final int stepNumber;
-  final String description;
-  final String? videoUrl;
-  final String? localVideoPath;
-  final int? duration;
-
-  Instruction({
-    required this.stepNumber,
-    required this.description,
-    this.videoUrl,
-    this.localVideoPath,
-    this.duration,
-  });
-
-  factory Instruction.fromMap(Map<String, dynamic> map) {
-    return Instruction(
-      stepNumber: map['stepNumber'] ?? 0,
-      description: map['description'] ?? '',
-      videoUrl: map['videoUrl'],
-      localVideoPath: map['localVideoPath'],
-      duration: map['duration'],
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'stepNumber': stepNumber,
-      'description': description,
-      'videoUrl': videoUrl,
-      'localVideoPath': localVideoPath,
-      'duration': duration,
-    };
-  }
-}
-
-class NutritionInfo {
-  final double calories;
-  final double protein;
-  final double carbs;
-  final double fat;
-  final double fiber;
-  final double sugar;
-
-  NutritionInfo({
-    required this.calories,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
-    required this.fiber,
-    required this.sugar,
-  });
-
-  factory NutritionInfo.fromMap(Map<String, dynamic> map) {
-    return NutritionInfo(
-      calories: (map['calories'] ?? 0.0).toDouble(),
-      protein: (map['protein'] ?? 0.0).toDouble(),
-      carbs: (map['carbs'] ?? 0.0).toDouble(),
-      fat: (map['fat'] ?? 0.0).toDouble(),
-      fiber: (map['fiber'] ?? 0.0).toDouble(),
-      sugar: (map['sugar'] ?? 0.0).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'calories': calories,
-      'protein': protein,
-      'carbs': carbs,
-      'fat': fat,
-      'fiber': fiber,
-      'sugar': sugar,
     };
   }
 }

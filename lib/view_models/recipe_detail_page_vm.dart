@@ -13,6 +13,8 @@ class RecipeDetailViewModel extends ChangeNotifier {
   int currentStep = 0;
   bool isBookmarked = false;
   late String currentUserId;
+  int? editingIngredientsIndex;
+  final TextEditingController editingController = TextEditingController();
 
   RecipeDetailViewModel({
     required this.recipe,
@@ -84,6 +86,38 @@ class RecipeDetailViewModel extends ChangeNotifier {
           {"recipeId": recipe.id, "savedAt": FieldValue.serverTimestamp()});
     }
     isBookmarked = !isBookmarked;
+    notifyListeners();
+  }
+
+  void startEditingIngredient(int index, num currentAmount) {
+    editingIngredientsIndex = index;
+    editingController.text = currentAmount.toString();
+    notifyListeners();
+  }
+
+  void cancelEditing() {
+    editingIngredientsIndex = null;
+    editingController.clear();
+    notifyListeners();
+  }
+
+  void updateIngredientAmount(int index, String value) {
+    final newAmount = num.tryParse(value);
+    if (newAmount == null || newAmount <= 0) return;
+
+    final oldAmount = recipe.ingredients[index].amount;
+    if (oldAmount == 0) return;
+
+    // Calculate the ratio
+    final ratio = newAmount / oldAmount;
+
+    // Update all ingredient amounts based on the ratio
+    for (var ing in recipe.ingredients) {
+      ing.amount = (ing.amount * ratio);
+    }
+
+    editingIngredientsIndex = null;
+    editingController.clear();
     notifyListeners();
   }
 }

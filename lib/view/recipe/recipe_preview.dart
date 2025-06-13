@@ -40,8 +40,8 @@ class _RecipePreviewPageState extends State<RecipePreviewPage> {
       final instruction = widget.viewModel.instructions[i];
       VideoPlayerController? controller;
 
-      final localVideoPath = instruction['localVideoPath'] as String?;
-      final videoUrl = instruction['videoUrl'] as String?;
+      final localVideoPath = instruction.localVideoPath as String?;
+      final videoUrl = instruction.videoUrl as String?;
 
       if (kIsWeb) {
         if (localVideoPath != null && localVideoPath.isNotEmpty) {
@@ -185,7 +185,7 @@ class _RecipePreviewPageState extends State<RecipePreviewPage> {
                 final ingredient = viewModel.ingredients[index];
                 return ListTile(
                   title: Text(
-                      '${ingredient['amount']} ${ingredient['unit']} ${ingredient['name']}'),
+                      '${ingredient.amount} ${ingredient.unit} ${ingredient.name}'),
                 );
               },
             ),
@@ -223,8 +223,8 @@ class _RecipePreviewPageState extends State<RecipePreviewPage> {
                     children: [
                       ListTile(
                         leading: CircleAvatar(
-                            child: Text('${instruction['stepNumber']}')),
-                        title: Text(instruction['description']),
+                            child: Text('${instruction.stepNumber}')),
+                        title: Text(instruction.description),
                       ),
                       controller == null
                           ? Container()
@@ -248,10 +248,10 @@ class _RecipePreviewPageState extends State<RecipePreviewPage> {
                 );
               },
             ),
-            if (viewModel.nutritionInfo['calories'] > 0 ||
-                viewModel.nutritionInfo['protein'] > 0 ||
-                viewModel.nutritionInfo['carbs'] > 0 ||
-                viewModel.nutritionInfo['fat'] > 0) ...[
+            if (viewModel.nutritionInfo.calories > 0 ||
+                viewModel.nutritionInfo.protein_g > 0 ||
+                viewModel.nutritionInfo.carbohydrates_total_g > 0 ||
+                viewModel.nutritionInfo.fat_total_g > 0) ...[
               SizedBox(height: 16),
               Text('Nutrition Information',
                   style: Theme.of(context).textTheme.titleMedium),
@@ -261,13 +261,13 @@ class _RecipePreviewPageState extends State<RecipePreviewPage> {
                   child: Column(
                     children: [
                       _buildNutritionRow('Calories',
-                          '${viewModel.nutritionInfo['calories']} kcal'),
+                          '${viewModel.nutritionInfo.calories} kcal'),
                       _buildNutritionRow(
-                          'Protein', '${viewModel.nutritionInfo['protein']}g'),
+                          'Protein', '${viewModel.nutritionInfo.protein_g}g'),
+                      _buildNutritionRow('Carbs',
+                          '${viewModel.nutritionInfo.carbohydrates_total_g}g'),
                       _buildNutritionRow(
-                          'Carbs', '${viewModel.nutritionInfo['carbs']}g'),
-                      _buildNutritionRow(
-                          'Fat', '${viewModel.nutritionInfo['fat']}g'),
+                          'Fat', '${viewModel.nutritionInfo.fat_total_g}g'),
                     ],
                   ),
                 ),
