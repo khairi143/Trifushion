@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:chewie/chewie.dart';
+import 'package:ibites/models/nutrition_model.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import '../../models/recipe.dart';
+import '../../models/ingredient_model.dart';
+import '../../services/caloriesninja_service.dart';
 
 class RecipeDetailViewModel extends ChangeNotifier {
   final Recipe recipe;
@@ -15,6 +18,7 @@ class RecipeDetailViewModel extends ChangeNotifier {
   late String currentUserId;
   int? editingIngredientsIndex;
   final TextEditingController editingController = TextEditingController();
+  CaloriesNinjaService caloriesNinjaService = CaloriesNinjaService();
 
   RecipeDetailViewModel({
     required this.recipe,
@@ -118,6 +122,22 @@ class RecipeDetailViewModel extends ChangeNotifier {
 
     editingIngredientsIndex = null;
     editingController.clear();
+    updateNutritionInfo();
+    notifyListeners();
+  }
+
+  void updateNutritionInfo() async {
+    // make ingredients list into a string
+    NutritionInfo? nutritionInfo = recipe.nutritionInfo;
+    List<Ingredient> ingredients = recipe.ingredients;
+    final ingredientsList =
+        caloriesNinjaService.convertToQueryString(ingredients);
+
+    if (ingredientsList.isNotEmpty) {
+      nutritionInfo =
+          await caloriesNinjaService.fetchNutritionInfo(ingredientsList);
+    }
+
     notifyListeners();
   }
 }
