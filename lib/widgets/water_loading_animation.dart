@@ -75,23 +75,26 @@ class _WaterLoadingAnimationState extends State<WaterLoadingAnimation>
                 Positioned(
                   top: 30,
                   left: 30,
-                  child: AnimatedFloatingVegetable(image: 'assets/carrot.png'),
+                  child: AnimatedFloatingVegetable(
+                      image: 'assets/images/carrot.png'),
                 ),
                 Positioned(
                   top: 50,
                   right: 50,
-                  child:
-                      AnimatedFloatingVegetable(image: 'assets/broccoli.png'),
+                  child: AnimatedFloatingVegetable(
+                      image: 'assets/images/broccoli.png'),
                 ),
                 Positioned(
                   top: 80,
                   left: 70,
-                  child: AnimatedFloatingVegetable(image: 'assets/tomato.png'),
+                  child: AnimatedFloatingVegetable(
+                      image: 'assets/images/tomato.png'),
                 ),
                 Positioned(
                   top: 100,
                   right: 80,
-                  child: AnimatedFloatingVegetable(image: 'assets/pepper.png'),
+                  child: AnimatedFloatingVegetable(
+                      image: 'assets/images/pepper.png'),
                 ),
               ],
             ),

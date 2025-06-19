@@ -20,6 +20,7 @@ class RecipeFormViewModel extends ChangeNotifier {
   final fiberController = TextEditingController();
   final sugarController = TextEditingController();
   final CaloriesNinjaService caloriesNinjaService = CaloriesNinjaService();
+  bool isLoading = false;
 
   XFile? coverImage;
   List<String> selectedCategories = [];
@@ -132,6 +133,11 @@ class RecipeFormViewModel extends ChangeNotifier {
 
   void togglePreviewMode() {
     isPreviewMode = !isPreviewMode;
+    notifyListeners();
+  }
+
+  void setLoading(bool loading) {
+    isLoading = loading;
     notifyListeners();
   }
 

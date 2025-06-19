@@ -113,6 +113,7 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
                     'amount': double.tryParse(amountController.text) ?? 0,
                     'unit': unitController.text,
                   });
+                  if (!mounted) return;
                   Navigator.pop(context);
                 }
               },
@@ -198,6 +199,7 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
 
   Future<void> _saveRecipe(BuildContext context) async {
     final viewModel = Provider.of<RecipeFormViewModel>(context, listen: false);
+    viewModel.setLoading(true);
     if (viewModel.formKey.currentState!.validate()) {
       viewModel.formKey.currentState!.save();
 
@@ -372,6 +374,8 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving recipe: $e')),
         );
+      } finally {
+        viewModel.setLoading(false);
       }
     }
   }
@@ -386,25 +390,28 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
             actions: [
               IconButton(
                 icon: Icon(Icons.preview),
-                onPressed: () async {
-                  // Go to preview page
-                  final returnedViewModel = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RecipePreviewPage(
-                          viewModel:
-                              RecipePreviewViewModel(formViewModel: viewModel)),
-                    ),
-                  );
-                  setState(() {});
-                  viewModel.togglePreviewMode();
-                },
+                onPressed: viewModel.isLoading
+                    ? null
+                    : () async {
+                        // Go to preview page
+                        final returnedViewModel = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RecipePreviewPage(
+                                viewModel: RecipePreviewViewModel(
+                                    formViewModel: viewModel)),
+                          ),
+                        );
+                        setState(() {});
+                        viewModel.togglePreviewMode();
+                      },
                 tooltip: 'Preview Recipe',
               ),
               IconButton(
-                icon: Icon(Icons.save),
-                onPressed: () => _saveRecipe(context),
-              ),
+                  icon: Icon(Icons.save),
+                  onPressed: () =>
+                      viewModel.isLoading ? null : () => _saveRecipe(context),
+                  tooltip: "Save"),
             ],
           ),
           body:
@@ -767,7 +774,7 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
                 ),
               ),
             ),
-            //if (true) WaterLoadingAnimation(isVisible: true),
+            WaterLoadingAnimation(isVisible: viewModel.isLoading),
           ]),
         );
       },
