@@ -14,6 +14,10 @@ class RecipeModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isPublic;
+  final int prepTime;
+  final int cookTime;
+  final int servings;
+  final List<String> categories;
 
   RecipeModel({
     required this.id,
@@ -28,7 +32,14 @@ class RecipeModel {
     required this.createdAt,
     required this.updatedAt,
     this.isPublic = true,
-  });
+    int? prepTime,
+    int? cookTime,
+    int? servings,
+    List<String>? categories,
+  })  : prepTime = prepTime ?? 0,
+        cookTime = cookTime ?? 0,
+        servings = servings ?? 1,
+        categories = categories ?? [];
 
   // Convert Recipe object to Map for Firestore
   Map<String, dynamic> toMap() {
@@ -44,6 +55,10 @@ class RecipeModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isPublic': isPublic,
+      'prepTime': prepTime,
+      'cookTime': cookTime,
+      'servings': servings,
+      'categories': categories,
     };
   }
 
@@ -55,16 +70,24 @@ class RecipeModel {
     return RecipeModel(
       id: documentId,
       title: _parseString(map['title']) ?? 'Untitled Recipe',
-      description: _parseString(map['description']) ?? 'No description available',
+      description:
+          _parseString(map['description']) ?? 'No description available',
       imageUrl: _parseString(map['imageUrl']) ?? '',
       rating: _parseDouble(map['rating']) ?? 0.0,
-      authorId: _parseString(map['createdBy']) ?? _parseString(map['authorId']) ?? '',
-      authorName: _parseString(map['createdByName']) ?? _parseString(map['authorName']) ?? '',
+      authorId:
+          _parseString(map['createdBy']) ?? _parseString(map['authorId']) ?? '',
+      authorName: _parseString(map['createdByName']) ??
+          _parseString(map['authorName']) ??
+          '',
       ingredients: _parseStringList(map['ingredients']) ?? [],
       instructions: _parseStringList(map['instructions']) ?? [],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isPublic: map['isPublic'] == true,
+      prepTime: map['prepTime'] ?? 0,
+      cookTime: map['cookTime'] ?? 0,
+      servings: map['servings'] ?? 1,
+      categories: map['categories'] ?? [],
     );
   }
 
@@ -116,6 +139,10 @@ class RecipeModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isPublic,
+    int? prepTime,
+    int? cookTime,
+    int? servings,
+    List<String>? categories,
   }) {
     return RecipeModel(
       id: id ?? this.id,
@@ -130,6 +157,10 @@ class RecipeModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isPublic: isPublic ?? this.isPublic,
+      prepTime: prepTime ?? this.prepTime,
+      cookTime: cookTime ?? this.cookTime,
+      servings: servings ?? this.servings,
+      categories: categories ?? this.categories,
     );
   }
 }

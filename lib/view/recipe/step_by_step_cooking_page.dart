@@ -4,11 +4,13 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import '../../models/recipe.dart';
 import '../../models/instruction_model.dart';
+import 'recipe_detail_page.dart';
 
 class StepByStepCookingPage extends StatefulWidget {
   final Recipe recipe;
 
-  const StepByStepCookingPage({Key? key, required this.recipe}) : super(key: key);
+  const StepByStepCookingPage({Key? key, required this.recipe})
+      : super(key: key);
 
   @override
   _StepByStepCookingPageState createState() => _StepByStepCookingPageState();
@@ -20,7 +22,8 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
   bool _speechEnabled = false;
   bool _isListening = false;
   String _lastWords = '';
-  
+  bool _isProcessingCommand = false;
+
   Map<int, VideoPlayerController?> videoControllers = {};
   Map<int, ChewieController?> chewieControllers = {};
 
@@ -44,15 +47,16 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
     for (int i = 0; i < widget.recipe.instructions.length; i++) {
       final instruction = widget.recipe.instructions[i];
       VideoPlayerController? controller;
-      
+
       if (instruction.videoUrl != null && instruction.videoUrl!.isNotEmpty) {
-        controller = VideoPlayerController.networkUrl(Uri.parse(instruction.videoUrl!));
+        controller =
+            VideoPlayerController.networkUrl(Uri.parse(instruction.videoUrl!));
       }
-      
+
       if (controller != null) {
         await controller.initialize();
         videoControllers[i] = controller;
-        
+
         chewieControllers[i] = ChewieController(
           videoPlayerController: controller,
           aspectRatio: controller.value.aspectRatio,
@@ -80,18 +84,38 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
   }
 
   void _onSpeechResult(dynamic result) {
+    final words = result.recognizedWords?.toLowerCase() ?? '';
     setState(() {
-      _lastWords = result.recognizedWords?.toLowerCase() ?? '';
+      _lastWords = words;
     });
-    
-    // Check for voice commands
-    if (_lastWords.contains('ok') || _lastWords.contains('next') || _lastWords.contains('continue')) {
-      _nextStep();
-    } else if (_lastWords.contains('back') || _lastWords.contains('previous')) {
-      _previousStep();
-    } else if (_lastWords.contains('repeat') || _lastWords.contains('again')) {
-      _repeatStep();
+
+    // Prevent multiple triggers
+    if (_isProcessingCommand) return;
+
+    // Get last 1–2 words only for matching
+    final lastWords =
+        words.split(' ').reversed.take(2).toList().reversed.join(' ');
+    print('Last spoken: $lastWords');
+
+    if (lastWords.contains('back') || lastWords.contains('previous')) {
+      _handleVoiceCommand(_previousStep);
+    } else if (lastWords.contains('repeat') || lastWords.contains('again')) {
+      _handleVoiceCommand(_repeatStep);
+    } else if (lastWords.contains('next') ||
+        lastWords.contains('ok') ||
+        lastWords.contains('continue')) {
+      _handleVoiceCommand(_nextStep);
     }
+  }
+
+  void _handleVoiceCommand(Function command) {
+    _isProcessingCommand = true;
+    command();
+
+    // Allow another command after 1.5 seconds
+    Future.delayed(Duration(seconds: 2), () {
+      _isProcessingCommand = false;
+    });
   }
 
   void _nextStep() {
@@ -124,6 +148,15 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
     }
   }
 
+  void _Finish() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+          builder: (_) =>
+              RecipeDetailPage(recipe: widget.recipe, fromFinishCooking: true)),
+    );
+  }
+
   @override
   void dispose() {
     for (final controller in videoControllers.values) {
@@ -139,7 +172,18 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
   Widget build(BuildContext context) {
     final instruction = widget.recipe.instructions[currentStep];
     final hasVideo = chewieControllers[currentStep] != null;
+    bool showLoading = false;
 
+    if (hasVideo == false) {
+      showLoading = true;
+      Future.delayed(Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            showLoading = false;
+          });
+        }
+      });
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -173,40 +217,44 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
               child: Container(
                 width: double.infinity,
                 color: Colors.black,
-                child: hasVideo
+                child: hasVideo == true
                     ? Chewie(controller: chewieControllers[currentStep]!)
-                    : Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.grey[800]!, Colors.grey[900]!],
-                          ),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.video_library_outlined,
-                                size: 80,
-                                color: Colors.grey[400],
+                    : showLoading
+                        ? Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.white))
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.grey[800]!, Colors.grey[900]!],
                               ),
-                              SizedBox(height: 16),
-                              Text(
-                                'No video available for this step',
-                                style: TextStyle(
-                                  color: Colors.grey[400],
-                                  fontSize: 16,
-                                ),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.video_library_outlined,
+                                    size: 80,
+                                    color: Colors.grey[400],
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No video available for this step',
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
               ),
             ),
-            
+
             // Instruction Text Section
             Expanded(
               flex: 2,
@@ -244,7 +292,7 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
                         ),
                       ),
                     ),
-                    
+
                     // Voice Command Instructions
                     if (_speechEnabled)
                       Container(
@@ -275,7 +323,7 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
                 ),
               ),
             ),
-            
+
             // Control Buttons
             Container(
               padding: EdgeInsets.all(20),
@@ -291,10 +339,11 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[300],
                       foregroundColor: Colors.black87,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
                   ),
-                  
+
                   // Repeat Button
                   ElevatedButton.icon(
                     onPressed: _repeatStep,
@@ -303,19 +352,26 @@ class _StepByStepCookingPageState extends State<StepByStepCookingPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
                   ),
-                  
-                  // Next Button
+
+                  // Next Button & Finish Button
                   ElevatedButton.icon(
-                    onPressed: currentStep < widget.recipe.instructions.length - 1 ? _nextStep : null,
+                    onPressed:
+                        currentStep < widget.recipe.instructions.length - 1
+                            ? _nextStep
+                            : _Finish,
                     icon: Icon(Icons.skip_next),
-                    label: Text('Next'),
+                    label: currentStep < widget.recipe.instructions.length - 1
+                        ? Text('Next')
+                        : Text('Finish'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF870C14),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
                   ),
                 ],

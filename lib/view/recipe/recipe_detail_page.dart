@@ -8,8 +8,13 @@ import 'step_by_step_cooking_page.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
+  final bool fromFinishCooking;
 
-  const RecipeDetailPage({Key? key, required this.recipe}) : super(key: key);
+  const RecipeDetailPage({
+    Key? key,
+    required this.recipe,
+    this.fromFinishCooking = false,
+  }) : super(key: key);
 
   @override
   _RecipeDetailPageState createState() => _RecipeDetailPageState();
@@ -20,6 +25,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
   late RecipeDetailViewModel viewModel;
   bool _showTimeDetails = false;
   bool _showNutritionDetails = false;
+  bool _showCookingFinish = false;
 
   @override
   void initState() {
@@ -29,6 +35,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
       vsync: this, // Only pass this ONCE
     );
     viewModel.initPreviewControllers(this);
+    _showCookingFinish = widget.fromFinishCooking;
   }
 
   @override
@@ -42,6 +49,95 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
   Widget build(BuildContext context) {
     const iconSize = 18.0;
     final Color? iconColor = Colors.grey[700];
+
+    if (_showCookingFinish) {
+      Future.microtask(() {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          barrierColor: Colors.transparent,
+          builder: (context) {
+            return GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _showCookingFinish = false;
+                });
+              },
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      setState(() {
+                        _showCookingFinish = false;
+                      });
+                    },
+                    child: Container(
+                      color: Colors.transparent,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Animated popping text
+                          TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.8, end: 1.0),
+                            duration: Duration(milliseconds: 400),
+                            curve: Curves.elasticOut,
+                            builder: (context, scale, child) => Transform.scale(
+                              scale: scale,
+                              child: child,
+                            ),
+                            child: Text(
+                              "Congratulations!",
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: const Color.fromARGB(255, 255, 221, 87),
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 8,
+                                    color: Colors.black45,
+                                    offset: Offset(2, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          // GIF image
+                          Image.asset(
+                            'assets/images/celebrate.gif', // Replace with your gif asset path
+                            height: 400,
+                          ),
+                          const SizedBox(height: 24),
+                          // Smaller text
+                          Text(
+                            "You've finished cooking!",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: const Color.fromARGB(255, 255, 177, 87),
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 6,
+                                  color: Colors.black26,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      });
+    }
+
     return ChangeNotifierProvider.value(
       value: viewModel,
       child: Consumer<RecipeDetailViewModel>(
@@ -561,7 +657,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
                   ),
                 );
               },
-              backgroundColor: Color(0xFF870C14),
+              backgroundColor: Color.fromARGB(255, 252, 175, 21),
               icon: Icon(Icons.play_arrow),
               label: Text('Cook Mode'),
             ),

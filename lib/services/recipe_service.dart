@@ -101,55 +101,56 @@ class RecipeService {
       throw Exception('Failed to update recipe: $e');
     }
   }
-  
+
   Future<String> uploadImageToStorage(File coverImage) async {
-  try {
-    final storageRef = _storage.ref().child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-    await storageRef.putFile(File(coverImage.path));
-    return await storageRef.getDownloadURL();
-  } catch (e) {
-    throw Exception('Failed to upload image: $e');
+    try {
+      final storageRef = _storage
+          .ref()
+          .child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await storageRef.putFile(File(coverImage.path));
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload image: $e');
+    }
   }
-}
 
-  
 // Delete recipe (User)
-Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageUrl) async {
-  try {
-    // Get the recipe document to verify the user who created it
-    final doc = await _firestore.collection(_collection).doc(recipeId).get();
+  Future<bool> userDeleteRecipe(
+      String recipeId, String userId, String coverImageUrl) async {
+    try {
+      // Get the recipe document to verify the user who created it
+      final doc = await _firestore.collection(_collection).doc(recipeId).get();
 
-    if (!doc.exists) {
-      throw Exception('Recipe not found');
-    }
-
-    // Get user from the recipe data to verify ownership
-    final recipeData = doc.data() as Map<String, dynamic>;
-    final createdBy = recipeData['createdBy'];
-
-    if (createdBy != userId) {
-      throw Exception('You do not have permission to delete this recipe');
-    }
-
-    await _firestore.collection(_collection).doc(recipeId).delete();
-
-    // delete image
-    if (coverImageUrl.isNotEmpty) {
-      try {
-        await _storage.refFromURL(coverImageUrl).delete();
-        print("Cover image deleted successfully");
-      } catch (e) {
-        print("Error deleting cover image: $e");
+      if (!doc.exists) {
+        throw Exception('Recipe not found');
       }
+
+      // Get user from the recipe data to verify ownership
+      final recipeData = doc.data() as Map<String, dynamic>;
+      final createdBy = recipeData['createdBy'];
+
+      if (createdBy != userId) {
+        throw Exception('You do not have permission to delete this recipe');
+      }
+
+      await _firestore.collection(_collection).doc(recipeId).delete();
+
+      // delete image
+      if (coverImageUrl.isNotEmpty) {
+        try {
+          await _storage.refFromURL(coverImageUrl).delete();
+          print("Cover image deleted successfully");
+        } catch (e) {
+          print("Error deleting cover image: $e");
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('Error deleting recipe: $e');
+      return false;
     }
-
-    return true;
-  } catch (e) {
-    print('Error deleting recipe: $e');
-    return false;
   }
-}
-
 
   // Get user's recipes
   Stream<List<Recipe>> getUserRecipes(String userId) {
@@ -254,24 +255,25 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
         .collection(_collection)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) {
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
               try {
-                final data = doc.data();
-                
                 // Try to detect if this is a Recipe object (new format) or RecipeModel (old format)
-                if (data.containsKey('ingredients') && data['ingredients'] is List) {
+                if (data.containsKey('ingredients') &&
+                    data['ingredients'] is List) {
                   final ingredients = data['ingredients'] as List;
                   if (ingredients.isNotEmpty && ingredients.first is Map) {
-                    final firstIngredient = ingredients.first as Map<String, dynamic>;
+                    final firstIngredient =
+                        ingredients.first as Map<String, dynamic>;
                     // Check if it has Recipe model structure (name, amount, unit)
-                    if (firstIngredient.containsKey('name') && firstIngredient.containsKey('amount')) {
+                    if (firstIngredient.containsKey('name') &&
+                        firstIngredient.containsKey('amount')) {
                       // This is likely a Recipe object, convert it to RecipeModel
                       return _convertRecipeToRecipeModel(data, doc.id);
                     }
                   }
                 }
-                
+
                 // Default to RecipeModel.fromMap for old format
                 return RecipeModel.fromMap(data, doc.id);
               } catch (e) {
@@ -290,25 +292,31 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
                   imageUrl: data['coverImage'] ?? '',
                   createdAt: DateTime.now(),
                   authorId: data['userId'] ?? data['createdBy'] ?? '',
-                  authorName: data['createdByName'] ?? data['createdByEmail'] ?? 'Unknown',
+                  authorName: data['createdByName'] ??
+                      data['createdByEmail'] ??
+                      'Unknown',
+                  rating: 0,
+                  updatedAt: DateTime.now(),
                 );
               }
-            })
-            .toList());
+            }).toList());
   }
 
   // Helper method to convert Recipe format to RecipeModel format
-  RecipeModel _convertRecipeToRecipeModel(Map<String, dynamic> data, String id) {
+  RecipeModel _convertRecipeToRecipeModel(
+      Map<String, dynamic> data, String id) {
     try {
       final ingredients = (data['ingredients'] as List?)?.map((e) {
-        final map = e as Map<String, dynamic>;
-        return '${map['amount']} ${map['unit']} ${map['name']}';
-      }).toList() ?? [];
+            final map = e as Map<String, dynamic>;
+            return '${map['amount']} ${map['unit']} ${map['name']}';
+          }).toList() ??
+          [];
 
       final instructions = (data['instructions'] as List?)?.map((e) {
-        final map = e as Map<String, dynamic>;
-        return '${map['stepNumber']}. ${map['description']}';
-      }).toList() ?? [];
+            final map = e as Map<String, dynamic>;
+            return '${map['stepNumber']}. ${map['description']}';
+          }).toList() ??
+          [];
 
       return RecipeModel(
         id: id,
@@ -321,11 +329,16 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
         servings: data['servings'] ?? 1,
         categories: List<String>.from(data['categories'] ?? []),
         imageUrl: data['coverImage'] ?? '',
-        createdAt: data['createdAt'] != null 
-            ? (data['createdAt'] as Timestamp).toDate() 
+        createdAt: data['createdAt'] != null
+            ? (data['createdAt'] as Timestamp).toDate()
             : DateTime.now(),
         authorId: data['userId'] ?? data['createdBy'] ?? '',
-        authorName: data['createdByName'] ?? data['createdByEmail'] ?? 'Unknown',
+        authorName:
+            data['createdByName'] ?? data['createdByEmail'] ?? 'Unknown',
+        rating: data['rating'] ?? 0,
+        updatedAt: data['updatedAt'] != null
+            ? (data['updatedAt'] as Timestamp).toDate()
+            : DateTime.now(),
       );
     } catch (e) {
       print('Error converting Recipe to RecipeModel: $e');
@@ -339,14 +352,14 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
         .where('authorId', isEqualTo: authorId)
         .snapshots()
         .map((snapshot) {
-          List<RecipeModel> recipes = snapshot.docs
-              .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
-              .toList();
-          
-          // Sort by creation date in memory to avoid index requirement
-          recipes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return recipes;
-        });
+      List<RecipeModel> recipes = snapshot.docs
+          .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
+          .toList();
+
+      // Sort by creation date in memory to avoid index requirement
+      recipes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return recipes;
+    });
   }
 
   // Get recipes with pagination (for better performance)
@@ -434,24 +447,22 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
       return snapshot.docs
           .map((doc) => Recipe.fromFirestore(doc))
           .where((recipe) {
-            // Convert recipe ingredients to lowercase for case-insensitive comparison
-            final recipeIngredients = recipe.ingredients
-                .map((ing) => ing.name.toLowerCase())
-                .toList();
+        // Convert recipe ingredients to lowercase for case-insensitive comparison
+        final recipeIngredients =
+            recipe.ingredients.map((ing) => ing.name.toLowerCase()).toList();
 
-            // Check if all included ingredients are present
-            final hasAllIncluded = includedIngredients.isEmpty ||
-                includedIngredients.every((ingredient) => recipeIngredients
-                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+        // Check if all included ingredients are present
+        final hasAllIncluded = includedIngredients.isEmpty ||
+            includedIngredients.every((ingredient) => recipeIngredients
+                .any((ri) => ri.contains(ingredient.toLowerCase())));
 
-            // Check if none of the excluded ingredients are present
-            final hasNoExcluded = excludedIngredients.isEmpty ||
-                !excludedIngredients.any((ingredient) => recipeIngredients
-                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+        // Check if none of the excluded ingredients are present
+        final hasNoExcluded = excludedIngredients.isEmpty ||
+            !excludedIngredients.any((ingredient) => recipeIngredients
+                .any((ri) => ri.contains(ingredient.toLowerCase())));
 
-            return hasAllIncluded && hasNoExcluded;
-          })
-          .toList();
+        return hasAllIncluded && hasNoExcluded;
+      }).toList();
     });
   }
 
@@ -466,34 +477,33 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
       return snapshot.docs
           .map((doc) => Recipe.fromFirestore(doc))
           .where((recipe) {
-            // Text search match
-            final matchesQuery = query.isEmpty ||
-                recipe.title.toLowerCase().contains(query.toLowerCase()) ||
-                recipe.description.toLowerCase().contains(query.toLowerCase());
+        // Text search match
+        final matchesQuery = query.isEmpty ||
+            recipe.title.toLowerCase().contains(query.toLowerCase()) ||
+            recipe.description.toLowerCase().contains(query.toLowerCase());
 
-            // Convert recipe ingredients to lowercase for case-insensitive comparison
-            final recipeIngredients = recipe.ingredients
-                .map((ing) => ing.name.toLowerCase())
-                .toList();
+        // Convert recipe ingredients to lowercase for case-insensitive comparison
+        final recipeIngredients =
+            recipe.ingredients.map((ing) => ing.name.toLowerCase()).toList();
 
-            // Check if all included ingredients are present
-            final hasAllIncluded = includedIngredients.isEmpty ||
-                includedIngredients.every((ingredient) => recipeIngredients
-                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+        // Check if all included ingredients are present
+        final hasAllIncluded = includedIngredients.isEmpty ||
+            includedIngredients.every((ingredient) => recipeIngredients
+                .any((ri) => ri.contains(ingredient.toLowerCase())));
 
-            // Check if none of the excluded ingredients are present
-            final hasNoExcluded = excludedIngredients.isEmpty ||
-                !excludedIngredients.any((ingredient) => recipeIngredients
-                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+        // Check if none of the excluded ingredients are present
+        final hasNoExcluded = excludedIngredients.isEmpty ||
+            !excludedIngredients.any((ingredient) => recipeIngredients
+                .any((ri) => ri.contains(ingredient.toLowerCase())));
 
-            return matchesQuery && hasAllIncluded && hasNoExcluded;
-          })
-          .toList();
+        return matchesQuery && hasAllIncluded && hasNoExcluded;
+      }).toList();
     });
   }
 
   // Create a new recipe using RecipeModel (for admin)
-  Future<String> createRecipeModel(RecipeModel recipeModel, File? coverImage) async {
+  Future<String> createRecipeModel(
+      RecipeModel recipeModel, File? coverImage) async {
     try {
       String? imageUrl;
       if (coverImage != null) {
@@ -509,13 +519,13 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
       if (imageUrl != null) {
         recipeData['imageUrl'] = imageUrl;
       }
-      
+
       // Set timestamps
       recipeData['createdAt'] = FieldValue.serverTimestamp();
       recipeData['updatedAt'] = FieldValue.serverTimestamp();
 
       final docRef = await _firestore.collection(_collection).add(recipeData);
-      
+
       // Log admin action
       await _logAdminAction('CREATE_RECIPE', {
         'recipeId': docRef.id,
@@ -523,7 +533,7 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
         'action': 'Recipe created by admin via photo',
         'timestamp': FieldValue.serverTimestamp(),
       });
-      
+
       return docRef.id;
     } catch (e) {
       throw Exception('Failed to create recipe: $e');
