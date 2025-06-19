@@ -417,4 +417,42 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
           .toList();
     });
   }
+
+  // Create a new recipe using RecipeModel (for admin)
+  Future<String> createRecipeModel(RecipeModel recipeModel, File? coverImage) async {
+    try {
+      String? imageUrl;
+      if (coverImage != null) {
+        // Upload cover image to Firebase Storage
+        final storageRef = _storage.ref().child(
+            'recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await storageRef.putFile(coverImage);
+        imageUrl = await storageRef.getDownloadURL();
+      }
+
+      // Create recipe document with image URL
+      final recipeData = recipeModel.toMap();
+      if (imageUrl != null) {
+        recipeData['imageUrl'] = imageUrl;
+      }
+      
+      // Set timestamps
+      recipeData['createdAt'] = FieldValue.serverTimestamp();
+      recipeData['updatedAt'] = FieldValue.serverTimestamp();
+
+      final docRef = await _firestore.collection(_collection).add(recipeData);
+      
+      // Log admin action
+      await _logAdminAction('CREATE_RECIPE', {
+        'recipeId': docRef.id,
+        'title': recipeModel.title,
+        'action': 'Recipe created by admin via photo',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Failed to create recipe: $e');
+    }
+  }
 }

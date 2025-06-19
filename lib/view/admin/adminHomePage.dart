@@ -6,6 +6,7 @@ import '../login.dart';
 import '../banned_account.dart';
 import 'adminprofilepage.dart';
 import 'admin_recipe_management.dart';
+import 'admin_photo_recipe_page.dart';
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({Key? key}) : super(key: key);
@@ -34,6 +35,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     UserManagementPage(),
     AdminRecipeManagement(),
+    AdminPhotoRecipePage(),
     AdminProfilePage(),
   ];
 
@@ -213,6 +215,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.restaurant_menu),
             label: 'Recipe Management',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.camera_alt),
+            label: 'Photo Recipe',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
