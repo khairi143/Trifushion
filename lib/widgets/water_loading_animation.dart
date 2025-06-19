@@ -71,30 +71,30 @@ class _WaterLoadingAnimationState extends State<WaterLoadingAnimation>
                 _buildWaveLayer(
                     Colors.lightBlueAccent.withOpacity(0.3), 20, 2.5, pi / 2),
 
-                // Vegetables on different layers
+                // Food icons on different layers
                 Positioned(
                   top: 30,
                   left: 30,
-                  child: AnimatedFloatingVegetable(
-                      image: 'assets/images/carrot.png'),
+                  child: AnimatedFloatingIcon(
+                      icon: Icons.eco, color: Colors.orange),
                 ),
                 Positioned(
                   top: 50,
                   right: 50,
-                  child: AnimatedFloatingVegetable(
-                      image: 'assets/images/broccoli.png'),
+                  child: AnimatedFloatingIcon(
+                      icon: Icons.grass, color: Colors.green),
                 ),
                 Positioned(
                   top: 80,
                   left: 70,
-                  child: AnimatedFloatingVegetable(
-                      image: 'assets/images/tomato.png'),
+                  child: AnimatedFloatingIcon(
+                      icon: Icons.local_florist, color: Colors.red),
                 ),
                 Positioned(
                   top: 100,
                   right: 80,
-                  child: AnimatedFloatingVegetable(
-                      image: 'assets/images/pepper.png'),
+                  child: AnimatedFloatingIcon(
+                      icon: Icons.spa, color: Colors.yellow),
                 ),
               ],
             ),
@@ -174,22 +174,24 @@ class WaveClipper extends CustomClipper<Path> {
   }
 }
 
-class AnimatedFloatingVegetable extends StatefulWidget {
-  final String image;
+class AnimatedFloatingIcon extends StatefulWidget {
+  final IconData icon;
+  final Color color;
   final double size;
 
-  const AnimatedFloatingVegetable({
-    required this.image,
+  const AnimatedFloatingIcon({
+    required this.icon,
+    required this.color,
     this.size = 48,
     super.key,
   });
 
   @override
-  _AnimatedFloatingVegetableState createState() =>
-      _AnimatedFloatingVegetableState();
+  _AnimatedFloatingIconState createState() =>
+      _AnimatedFloatingIconState();
 }
 
-class _AnimatedFloatingVegetableState extends State<AnimatedFloatingVegetable>
+class _AnimatedFloatingIconState extends State<AnimatedFloatingIcon>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -223,10 +225,24 @@ class _AnimatedFloatingVegetableState extends State<AnimatedFloatingVegetable>
       builder: (_, child) {
         return Transform.translate(
           offset: Offset(0, -_animation.value),
-          child: Image.asset(
-            widget.image,
-            width: widget.size,
-            height: widget.size,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(8),
+            child: Icon(
+              widget.icon,
+              size: widget.size * 0.6,
+              color: widget.color,
+            ),
           ),
         );
       },

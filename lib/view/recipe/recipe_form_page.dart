@@ -409,8 +409,7 @@ class _RecipeFormPageBodyState extends State<_RecipeFormPageBody> {
               ),
               IconButton(
                   icon: Icon(Icons.save),
-                  onPressed: () =>
-                      viewModel.isLoading ? null : () => _saveRecipe(context),
+                  onPressed: viewModel.isLoading ? null : () => _saveRecipe(context),
                   tooltip: "Save"),
             ],
           ),

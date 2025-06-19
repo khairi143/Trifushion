@@ -19,20 +19,21 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
   bool _isIncluding = true;
 
   void _addIngredient(String ingredient) {
-    if (ingredient.trim().isEmpty) return;
+    final cleanedIngredient = ingredient.trim();
+    if (cleanedIngredient.isEmpty) return;
 
     setState(() {
       if (_isIncluding) {
-        if (!_includedIngredients.contains(ingredient)) {
-          _includedIngredients.add(ingredient);
+        if (!_includedIngredients.any((ing) => ing.toLowerCase() == cleanedIngredient.toLowerCase())) {
+          _includedIngredients.add(cleanedIngredient);
           // Remove from excluded if it was there
-          _excludedIngredients.remove(ingredient);
+          _excludedIngredients.removeWhere((ing) => ing.toLowerCase() == cleanedIngredient.toLowerCase());
         }
       } else {
-        if (!_excludedIngredients.contains(ingredient)) {
-          _excludedIngredients.add(ingredient);
+        if (!_excludedIngredients.any((ing) => ing.toLowerCase() == cleanedIngredient.toLowerCase())) {
+          _excludedIngredients.add(cleanedIngredient);
           // Remove from included if it was there
-          _includedIngredients.remove(ingredient);
+          _includedIngredients.removeWhere((ing) => ing.toLowerCase() == cleanedIngredient.toLowerCase());
         }
       }
       _ingredientController.clear();
@@ -53,6 +54,14 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
     widget.onFilterChanged(_includedIngredients, _excludedIngredients);
   }
 
+  void _clearAllFilters() {
+    setState(() {
+      _includedIngredients.clear();
+      _excludedIngredients.clear();
+    });
+    widget.onFilterChanged(_includedIngredients, _excludedIngredients);
+  }
+
   @override
   void dispose() {
     _ingredientController.dispose();
@@ -66,6 +75,31 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with Clear All button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Smart Recipe Filter',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              if (_includedIngredients.isNotEmpty || _excludedIngredients.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _clearAllFilters,
+                  icon: Icon(Icons.clear_all, size: 18),
+                  label: Text('Clear All'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                  ),
+                ),
+            ],
+          ),
+          
+          SizedBox(height: 12),
+
           // Filter Type Toggle
           Row(
             children: [
@@ -84,6 +118,7 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.add_circle_outline),
                           SizedBox(width: 4),
@@ -94,6 +129,7 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.remove_circle_outline),
                           SizedBox(width: 4),
@@ -126,8 +162,18 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
+                    suffixIcon: _ingredientController.text.isNotEmpty 
+                        ? IconButton(
+                            icon: Icon(Icons.clear),
+                            onPressed: () {
+                              _ingredientController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
                   ),
                   onSubmitted: _addIngredient,
+                  onChanged: (value) => setState(() {}), // Update UI for suffix icon
                 ),
               ),
               SizedBox(width: 8),
@@ -151,7 +197,7 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Must Include:',
+                  'Must Include (${_includedIngredients.length}):',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
@@ -179,7 +225,7 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Must Exclude:',
+                  'Must Exclude (${_excludedIngredients.length}):',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.red,
@@ -199,6 +245,34 @@ class _SmartRecipeFilterState extends State<SmartRecipeFilter> {
                   }).toList(),
                 ),
               ],
+            ),
+          ],
+          
+          // Show filter summary
+          if (_includedIngredients.isNotEmpty || _excludedIngredients.isNotEmpty) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Filtering recipes with ${_includedIngredients.length} required and ${_excludedIngredients.length} excluded ingredients',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],

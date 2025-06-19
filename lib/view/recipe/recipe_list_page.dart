@@ -22,21 +22,9 @@ class _RecipeListPageState extends State<RecipeListPage> {
   List<String> _excludedIngredients = [];
 
   Stream<List<Recipe>> _getRecipeStream() {
-    // If there is any search query or ingredient filter, use combined logic
-    if (_searchQuery.isNotEmpty ||
-        _includedIngredients.isNotEmpty ||
-        _excludedIngredients.isNotEmpty) {
-      return _recipeService.searchAndFilterRecipes(
-          _searchQuery, _includedIngredients, _excludedIngredients);
-    }
-
-    // Otherwise check category filter
-    if (_selectedCategory != null) {
-      return _recipeService.getRecipesByCategory(_selectedCategory!);
-    }
-
-    // Default: return all recipes
-    return _recipeService.getRecipes();
+    // Always use the combined search and filter method to handle all filters together
+    return _recipeService.searchAndFilterRecipes(
+        _searchQuery, _includedIngredients, _excludedIngredients, _selectedCategory);
   }
 
   @override
@@ -183,14 +171,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
                                   topLeft: Radius.circular(16),
                                   bottomLeft: Radius.circular(16),
                                 ),
-                                child: Image.network(
-                                  recipe.coverImage.isNotEmpty
-                                      ? recipe.coverImage
-                                      : 'https://via.placeholder.com/110x80?text=No+Image',
-                                  width: 110,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: _buildRecipeListImage(recipe.coverImage),
                               ),
                               Positioned(
                                 top: 6,
@@ -321,5 +302,104 @@ class _RecipeListPageState extends State<RecipeListPage> {
     } else {
       return 'Just now';
     }
+  }
+
+  Widget _buildRecipeListImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        width: 110,
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFF6B6B),
+              Color(0xFFFF8E53),
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.restaurant,
+              size: 24,
+              color: Colors.white.withOpacity(0.8),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'No Image',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      width: 110,
+      height: 80,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: 110,
+          height: 80,
+          color: Colors.grey[200],
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+              ),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        print('❌ Recipe list image loading error: $error');
+        return Container(
+          width: 110,
+          height: 80,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFFF6B6B),
+                Color(0xFFFF8E53),
+              ],
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.broken_image,
+                size: 20,
+                color: Colors.white.withOpacity(0.8),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Error',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

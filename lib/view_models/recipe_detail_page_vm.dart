@@ -10,7 +10,7 @@ import '../../models/ingredient_model.dart';
 import '../../services/caloriesninja_service.dart';
 
 class RecipeDetailViewModel extends ChangeNotifier {
-  final Recipe recipe;
+  Recipe recipe;
   late TabController tabController;
   ChewieController? chewieController;
   int currentStep = 0;
@@ -162,6 +162,12 @@ class RecipeDetailViewModel extends ChangeNotifier {
           await caloriesNinjaService.fetchNutritionInfo(ingredientsList);
     }
 
+    notifyListeners();
+  }
+
+  // Update recipe object (for image updates, etc.)
+  void updateRecipe(Recipe newRecipe) {
+    recipe = newRecipe;
     notifyListeners();
   }
 }

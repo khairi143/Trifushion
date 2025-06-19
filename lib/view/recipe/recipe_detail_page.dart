@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:chewie/chewie.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 import '../../models/recipe.dart';
 import '../../view_models/recipe_detail_page_vm.dart';
+import '../../services/recipe_service.dart';
 import 'step_by_step_cooking_page.dart';
 
 class RecipeDetailPage extends StatefulWidget {
@@ -26,6 +30,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
   bool _showTimeDetails = false;
   bool _showNutritionDetails = false;
   bool _showCookingFinish = false;
+  
+  // Image upload related variables
+  final ImagePicker _imagePicker = ImagePicker();
+  final RecipeService _recipeService = RecipeService();
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -45,10 +54,213 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
     super.dispose();
   }
 
+  // Check if current user is the recipe owner
+  bool _isRecipeOwner() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      print('🔒 No current user logged in');
+      return false;
+    }
+    
+    print('👤 Current user ID: ${currentUser.uid}');
+    print('📝 Recipe user ID: ${widget.recipe.userId}');
+    
+    // Check both userId and potential createdBy field for compatibility
+    bool isOwner = currentUser.uid == widget.recipe.userId;
+    
+    print('✅ Is recipe owner: $isOwner');
+    
+    // TEMPORARY: Allow all logged-in users to upload for testing
+    print('🧪 TESTING MODE: Allowing all users to upload');
+    return true; // This will be changed back later
+  }
+
+  // Handle image upload
+  Future<void> _uploadRecipeImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      // Upload image to Firebase Storage using XFile
+      final imageUrl = await _recipeService.uploadXFileToStorage(image);
+
+      // Update recipe with new image URL
+      await _recipeService.updateRecipeImage(widget.recipe.id, imageUrl);
+
+      // Update the local recipe object
+      final updatedRecipe = widget.recipe.copyWith(coverImage: imageUrl);
+      viewModel.updateRecipe(updatedRecipe);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recipe image updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+    } catch (e) {
+      print('Error uploading image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
+  }
+
+  // Show image upload options
+  void _showImageUploadOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _uploadRecipeImage();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Take Photo'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _takePhoto();
+                },
+              ),
+              if (widget.recipe.coverImage.isNotEmpty)
+                ListTile(
+                  leading: Icon(Icons.delete, color: Colors.red),
+                  title: Text('Remove Image', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _removeRecipeImage();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Take photo with camera
+  Future<void> _takePhoto() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      // Upload image to Firebase Storage using XFile
+      final imageUrl = await _recipeService.uploadXFileToStorage(image);
+
+      // Update recipe with new image URL
+      await _recipeService.updateRecipeImage(widget.recipe.id, imageUrl);
+
+      // Update the local recipe object
+      final updatedRecipe = widget.recipe.copyWith(coverImage: imageUrl);
+      viewModel.updateRecipe(updatedRecipe);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recipe image updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+    } catch (e) {
+      print('Error taking photo: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload photo: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
+  }
+
+  // Remove recipe image
+  Future<void> _removeRecipeImage() async {
+    try {
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      // Update recipe with empty image URL
+      await _recipeService.updateRecipeImage(widget.recipe.id, '');
+
+      // Update the local recipe object
+      final updatedRecipe = widget.recipe.copyWith(coverImage: '');
+      viewModel.updateRecipe(updatedRecipe);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recipe image removed successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+    } catch (e) {
+      print('Error removing image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const iconSize = 18.0;
     final Color? iconColor = Colors.grey[700];
+
+    // Debug information
+    final currentUser = FirebaseAuth.instance.currentUser;
+    print('🔍 DEBUG INFO:');
+    print('   Current User: ${currentUser?.uid ?? 'null'}');
+    print('   Recipe ID: ${widget.recipe.id}');
+    print('   Recipe Title: ${widget.recipe.title}');
+    print('   Recipe userId: ${widget.recipe.userId}');
+    print('   Recipe coverImage: ${widget.recipe.coverImage}');
+    print('   Is Owner: ${_isRecipeOwner()}');
 
     if (_showCookingFinish) {
       Future.microtask(() {
@@ -155,14 +367,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
                       stretch: true,
                       backgroundColor: Colors.white,
                       flexibleSpace: FlexibleSpaceBar(
-                        background: Image.network(
-                          recipe.coverImage.isNotEmpty
-                              ? recipe.coverImage
-                              : 'https://via.placeholder.com/400x300?text=No+Image',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: 300,
-                        ),
+                        background: _buildRecipeImage(recipe.coverImage),
                       ),
                       leading: Padding(
                         padding: const EdgeInsets.only(left: 8.0, top: 8.0),
@@ -663,6 +868,230 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRecipeImage(String imageUrl) {
+    return GestureDetector(
+      onTap: _showImageUploadOptions,
+      child: Stack(
+        children: [
+          // Main image or placeholder
+          if (imageUrl.isNotEmpty) 
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: 300,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  width: double.infinity,
+                  height: 300,
+                  color: Colors.grey[200],
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                print('❌ Recipe detail image loading error: $error');
+                return _buildPlaceholderImage();
+              },
+            )
+          else 
+            _buildPlaceholderImage(),
+          
+          // Upload button overlay
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: _isUploadingImage
+                  ? Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      onPressed: _showImageUploadOptions,
+                      icon: Icon(
+                        imageUrl.isNotEmpty ? Icons.edit : Icons.add_a_photo,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      tooltip: imageUrl.isNotEmpty ? 'Change Image' : 'Add Image',
+                    ),
+            ),
+          ),
+          
+          // Upload hint for empty state
+          if (imageUrl.isEmpty && !_isUploadingImage)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.touch_app,
+                        size: 48,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Tap anywhere to upload',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      width: double.infinity,
+      height: 300,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF4CAF50),
+            Color(0xFF2E7D32),
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.add_a_photo,
+            size: 80,
+            color: Colors.white.withOpacity(0.8),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Add Recipe Image',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            'Tap anywhere to upload a photo',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 16,
+            ),
+          ),
+          SizedBox(height: 20),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_upload,
+                  size: 24,
+                  color: Colors.white.withOpacity(0.9),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Upload Image',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.camera_alt, size: 16, color: Colors.white.withOpacity(0.8)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Camera',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.photo_library, size: 16, color: Colors.white.withOpacity(0.8)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Gallery',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -370,14 +370,10 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
               height: 80,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(
-                    recipe.imageUrl.isNotEmpty
-                        ? recipe.imageUrl
-                        : 'https://via.placeholder.com/80x80?text=No+Image',
-                  ),
-                  fit: BoxFit.cover,
-                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _buildAdminRecipeImage(recipe.imageUrl),
               ),
             ),
             title: Row(
@@ -910,11 +906,7 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    try {
-      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return 'Unknown Date';
-    }
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
   }
 
   String _formatDescription(String description) {
@@ -1252,5 +1244,104 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
         ),
       );
     }
+  }
+
+  Widget _buildAdminRecipeImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF6366F1),
+              Color(0xFF8B5CF6),
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.restaurant_menu,
+              size: 20,
+              color: Colors.white.withOpacity(0.8),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'No Image',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 8,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      width: 80,
+      height: 80,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: 80,
+          height: 80,
+          color: Colors.grey[200],
+          child: Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+              ),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        print('❌ Admin recipe image loading error: $error');
+        return Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFEF4444),
+                Color(0xFFF97316),
+              ],
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.broken_image,
+                size: 16,
+                color: Colors.white.withOpacity(0.8),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Error',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

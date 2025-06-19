@@ -81,6 +81,10 @@ class Recipe {
 
   factory Recipe.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    
+    // Debug: Print the raw data to understand the structure
+    print('🔍 Recipe.fromFirestore data: $data');
+    
     return Recipe(
       id: doc.id,
       title: data['title'] ?? '',
@@ -100,7 +104,8 @@ class Recipe {
               .toList() ??
           [],
       nutritionInfo: NutritionInfo.fromMap(data['nutritionInfo'] ?? {}),
-      userId: data['userId'] ?? '',
+      // Try both userId and createdBy fields for compatibility
+      userId: data['userId'] ?? data['createdBy'] ?? '',
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),

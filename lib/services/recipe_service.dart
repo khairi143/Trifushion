@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../models/recipe.dart';
 import '../models/recipe_model.dart';
@@ -108,6 +109,24 @@ class RecipeService {
           .ref()
           .child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
       await storageRef.putFile(File(coverImage.path));
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload image: $e');
+    }
+  }
+
+  // Upload XFile (supports both mobile and web)
+  Future<String> uploadXFileToStorage(XFile imageFile) async {
+    try {
+      final storageRef = _storage
+          .ref()
+          .child('recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      
+      // Get bytes from XFile (works on both mobile and web)
+      final bytes = await imageFile.readAsBytes();
+      
+      // Upload bytes to Firebase Storage
+      await storageRef.putData(bytes);
       return await storageRef.getDownloadURL();
     } catch (e) {
       throw Exception('Failed to upload image: $e');
@@ -449,32 +468,48 @@ class RecipeService {
           .where((recipe) {
         // Convert recipe ingredients to lowercase for case-insensitive comparison
         final recipeIngredients =
-            recipe.ingredients.map((ing) => ing.name.toLowerCase()).toList();
+            recipe.ingredients.map((ing) => ing.name.toLowerCase().trim()).toList();
 
         // Check if all included ingredients are present
         final hasAllIncluded = includedIngredients.isEmpty ||
-            includedIngredients.every((ingredient) => recipeIngredients
-                .any((ri) => ri.contains(ingredient.toLowerCase())));
+            includedIngredients.every((ingredient) {
+              final searchTerm = ingredient.toLowerCase().trim();
+              return recipeIngredients.any((ri) => 
+                  ri.contains(searchTerm) || 
+                  searchTerm.split(' ').every((word) => ri.contains(word))
+              );
+            });
 
         // Check if none of the excluded ingredients are present
         final hasNoExcluded = excludedIngredients.isEmpty ||
-            !excludedIngredients.any((ingredient) => recipeIngredients
-                .any((ri) => ri.contains(ingredient.toLowerCase())));
+            !excludedIngredients.any((ingredient) {
+              final searchTerm = ingredient.toLowerCase().trim();
+              return recipeIngredients.any((ri) => 
+                  ri.contains(searchTerm) || 
+                  searchTerm.split(' ').every((word) => ri.contains(word))
+              );
+            });
 
         return hasAllIncluded && hasNoExcluded;
       }).toList();
     });
   }
 
-  // Combined search and filter
+  // Combined search and filter with optional category
   Stream<List<Recipe>> searchAndFilterRecipes(String query,
-      List<String> includedIngredients, List<String> excludedIngredients) {
+      List<String> includedIngredients, List<String> excludedIngredients, [String? category]) {
     return _firestore
         .collection(_collection)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      print('🔍 Filtering ${snapshot.docs.length} recipes with:');
+      print('   Query: "$query"');
+      print('   Category: $category');
+      print('   Include: $includedIngredients');
+      print('   Exclude: $excludedIngredients');
+      
+      final filteredRecipes = snapshot.docs
           .map((doc) => Recipe.fromFirestore(doc))
           .where((recipe) {
         // Text search match
@@ -482,22 +517,53 @@ class RecipeService {
             recipe.title.toLowerCase().contains(query.toLowerCase()) ||
             recipe.description.toLowerCase().contains(query.toLowerCase());
 
+        // Category filter match
+        final matchesCategory = category == null || 
+            recipe.categories.contains(category);
+
         // Convert recipe ingredients to lowercase for case-insensitive comparison
         final recipeIngredients =
-            recipe.ingredients.map((ing) => ing.name.toLowerCase()).toList();
+            recipe.ingredients.map((ing) => ing.name.toLowerCase().trim()).toList();
 
         // Check if all included ingredients are present
         final hasAllIncluded = includedIngredients.isEmpty ||
-            includedIngredients.every((ingredient) => recipeIngredients
-                .any((ri) => ri.contains(ingredient.toLowerCase())));
+            includedIngredients.every((ingredient) {
+              final searchTerm = ingredient.toLowerCase().trim();
+              final matches = recipeIngredients.any((ri) => 
+                  ri.contains(searchTerm) || 
+                  searchTerm.split(' ').every((word) => ri.contains(word))
+              );
+              if (!matches && includedIngredients.isNotEmpty) {
+                print('   ❌ Recipe "${recipe.title}" missing required ingredient: $ingredient');
+                print('      Recipe has: $recipeIngredients');
+              }
+              return matches;
+            });
 
         // Check if none of the excluded ingredients are present
         final hasNoExcluded = excludedIngredients.isEmpty ||
-            !excludedIngredients.any((ingredient) => recipeIngredients
-                .any((ri) => ri.contains(ingredient.toLowerCase())));
+            !excludedIngredients.any((ingredient) {
+              final searchTerm = ingredient.toLowerCase().trim();
+              final matches = recipeIngredients.any((ri) => 
+                  ri.contains(searchTerm) || 
+                  searchTerm.split(' ').every((word) => ri.contains(word))
+              );
+              if (matches && excludedIngredients.isNotEmpty) {
+                print('   🚫 Recipe "${recipe.title}" contains excluded ingredient: $ingredient');
+              }
+              return matches;
+            });
 
-        return matchesQuery && hasAllIncluded && hasNoExcluded;
+        final isIncluded = matchesQuery && matchesCategory && hasAllIncluded && hasNoExcluded;
+        if (isIncluded) {
+          print('   ✅ Including recipe: "${recipe.title}"');
+        }
+        
+        return isIncluded;
       }).toList();
+      
+      print('🎯 Filtered to ${filteredRecipes.length} recipes');
+      return filteredRecipes;
     });
   }
 
@@ -537,6 +603,20 @@ class RecipeService {
       return docRef.id;
     } catch (e) {
       throw Exception('Failed to create recipe: $e');
+    }
+  }
+
+  // Update recipe image
+  Future<void> updateRecipeImage(String recipeId, String imageUrl) async {
+    try {
+      await _firestore.collection(_collection).doc(recipeId).update({
+        'coverImage': imageUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ Recipe image updated successfully');
+    } catch (e) {
+      print('❌ Error updating recipe image: $e');
+      throw Exception('Failed to update recipe image: $e');
     }
   }
 }

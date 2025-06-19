@@ -39,6 +39,13 @@ class _MyRecipesPageState extends State<MyRecipesPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Recipes'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.cleaning_services),
+            tooltip: 'Clean up invalid images',
+            onPressed: _cleanupProblematicImages,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -117,6 +124,11 @@ class _MyRecipesPageState extends State<MyRecipesPage>
                 print('Recipe data for $recipeId: $recipeData');
                 if (recipeData == null) return SizedBox.shrink();
                 final recipe = Recipe.fromFirestore(recipeSnapshot.data!);
+                
+                // Debug: Print recipe info to identify problematic data
+                print('📱 Recipe: ${recipe.title}');
+                print('🖼️ Cover Image: "${recipe.coverImage}"');
+                print('🔍 Image URL valid: ${_isValidImageUrl(recipe.coverImage)}');
 
                 return Card(
                   margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -124,12 +136,7 @@ class _MyRecipesPageState extends State<MyRecipesPage>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
-                    leading: recipe.coverImage != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(recipe.coverImage!,
-                                width: 60, height: 60, fit: BoxFit.cover))
-                        : Icon(Icons.image, size: 60, color: Colors.grey),
+                    leading: _buildRecipeImage(recipe.coverImage),
                     title: Text(recipe.title,
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(recipe.description,
@@ -168,6 +175,11 @@ class _MyRecipesPageState extends State<MyRecipesPage>
           itemCount: myRecipes.length,
           itemBuilder: (context, i) {
             final recipe = myRecipes[i];
+            
+            // Debug: Print recipe info to identify problematic data
+            print('📱 Created Recipe: ${recipe.title}');
+            print('🖼️ Cover Image: "${recipe.coverImage}"');
+            print('🔍 Image URL valid: ${_isValidImageUrl(recipe.coverImage)}');
 
             return Card(
               margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -175,13 +187,7 @@ class _MyRecipesPageState extends State<MyRecipesPage>
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               child: ListTile(
-                leading: recipe.coverImage != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(recipe.coverImage!,
-                            width: 60, height: 60, fit: BoxFit.cover),
-                      )
-                    : Icon(Icons.image, size: 60, color: Colors.grey),
+                leading: _buildRecipeImage(recipe.coverImage),
                 title: Text(recipe.title,
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(recipe.description,
@@ -258,5 +264,128 @@ class _MyRecipesPageState extends State<MyRecipesPage>
 
   void _showCreateCookbookDialog(BuildContext context) {
     // Implementation of _showCreateCookbookDialog method
+  }
+
+  Widget _buildRecipeImage(String? imageUrl) {
+    // Check if image URL is valid
+    if (imageUrl == null || 
+        imageUrl.isEmpty || 
+        !(Uri.tryParse(imageUrl)?.hasAbsolutePath ?? false)) {
+      return Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.restaurant, size: 25, color: Colors.grey[600]),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        imageUrl,
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('❌ Image loading error for URL: $imageUrl');
+          print('Error: $error');
+          return Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[200]!, width: 1),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image, size: 16, color: Colors.red[400]),
+                Text(
+                  'Failed',
+                  style: TextStyle(
+                    fontSize: 7,
+                    color: Colors.red[600],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _isValidImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return false;
+    return Uri.tryParse(imageUrl)?.hasAbsolutePath ?? false;
+  }
+
+  // Method to clean up problematic image URLs
+  Future<void> _cleanupProblematicImages() async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('recipes')
+          .where('userId', isEqualTo: _currentUserId)
+          .get();
+
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      int updateCount = 0;
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final coverImage = data['coverImage'] as String?;
+        
+        if (coverImage != null && 
+            coverImage.isNotEmpty && 
+            !_isValidImageUrl(coverImage)) {
+          print('🧹 Cleaning up invalid image URL for recipe: ${data['title']}');
+          print('   Invalid URL: "$coverImage"');
+          
+          batch.update(doc.reference, {'coverImage': ''});
+          updateCount++;
+        }
+      }
+
+      if (updateCount > 0) {
+        await batch.commit();
+        print('✅ Cleaned up $updateCount recipes with invalid image URLs');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cleaned up $updateCount recipes with invalid images'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error cleaning up images: $e');
+    }
   }
 }
