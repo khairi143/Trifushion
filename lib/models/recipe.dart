@@ -125,9 +125,11 @@ class Recipe {
       'instructions': instructions.map((e) => e.toMap()).toList(),
       'nutritionInfo': nutritionInfo.toMap(),
       'userId': userId,
+      'createdBy': userId,  // Add createdBy field for compatibility
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'createdByName': createdByName,
+      'createdByEmail': createdByName,  // Add createdByEmail field
     };
   }
 }

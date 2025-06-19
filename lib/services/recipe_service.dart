@@ -248,15 +248,89 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
     }
   }
 
-  // Get all recipes (for admin)
+  // Get all recipes (for admin) - Updated to handle both Recipe and RecipeModel
   Stream<List<RecipeModel>> getAllRecipes() {
     return _firestore
         .collection(_collection)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => RecipeModel.fromMap(doc.data(), doc.id))
+            .map((doc) {
+              try {
+                final data = doc.data();
+                
+                // Try to detect if this is a Recipe object (new format) or RecipeModel (old format)
+                if (data.containsKey('ingredients') && data['ingredients'] is List) {
+                  final ingredients = data['ingredients'] as List;
+                  if (ingredients.isNotEmpty && ingredients.first is Map) {
+                    final firstIngredient = ingredients.first as Map<String, dynamic>;
+                    // Check if it has Recipe model structure (name, amount, unit)
+                    if (firstIngredient.containsKey('name') && firstIngredient.containsKey('amount')) {
+                      // This is likely a Recipe object, convert it to RecipeModel
+                      return _convertRecipeToRecipeModel(data, doc.id);
+                    }
+                  }
+                }
+                
+                // Default to RecipeModel.fromMap for old format
+                return RecipeModel.fromMap(data, doc.id);
+              } catch (e) {
+                print('Error parsing recipe ${doc.id}: $e');
+                // Return a default RecipeModel with minimal data
+                return RecipeModel(
+                  id: doc.id,
+                  title: data['title'] ?? 'Unknown Recipe',
+                  description: data['description'] ?? '',
+                  ingredients: [],
+                  instructions: [],
+                  prepTime: 0,
+                  cookTime: 0,
+                  servings: 1,
+                  categories: [],
+                  imageUrl: data['coverImage'] ?? '',
+                  createdAt: DateTime.now(),
+                  authorId: data['userId'] ?? data['createdBy'] ?? '',
+                  authorName: data['createdByName'] ?? data['createdByEmail'] ?? 'Unknown',
+                );
+              }
+            })
             .toList());
+  }
+
+  // Helper method to convert Recipe format to RecipeModel format
+  RecipeModel _convertRecipeToRecipeModel(Map<String, dynamic> data, String id) {
+    try {
+      final ingredients = (data['ingredients'] as List?)?.map((e) {
+        final map = e as Map<String, dynamic>;
+        return '${map['amount']} ${map['unit']} ${map['name']}';
+      }).toList() ?? [];
+
+      final instructions = (data['instructions'] as List?)?.map((e) {
+        final map = e as Map<String, dynamic>;
+        return '${map['stepNumber']}. ${map['description']}';
+      }).toList() ?? [];
+
+      return RecipeModel(
+        id: id,
+        title: data['title'] ?? '',
+        description: data['description'] ?? '',
+        ingredients: ingredients,
+        instructions: instructions,
+        prepTime: data['prepTime'] ?? 0,
+        cookTime: data['cookTime'] ?? 0,
+        servings: data['servings'] ?? 1,
+        categories: List<String>.from(data['categories'] ?? []),
+        imageUrl: data['coverImage'] ?? '',
+        createdAt: data['createdAt'] != null 
+            ? (data['createdAt'] as Timestamp).toDate() 
+            : DateTime.now(),
+        authorId: data['userId'] ?? data['createdBy'] ?? '',
+        authorName: data['createdByName'] ?? data['createdByEmail'] ?? 'Unknown',
+      );
+    } catch (e) {
+      print('Error converting Recipe to RecipeModel: $e');
+      rethrow;
+    }
   }
 
   Stream<List<RecipeModel>> getRecipesByAuthor(String authorId) {
@@ -347,5 +421,112 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
     }
 
     return deletedCount;
+  }
+
+  // Filter recipes by ingredients
+  Stream<List<Recipe>> filterRecipesByIngredients(
+      List<String> includedIngredients, List<String> excludedIngredients) {
+    return _firestore
+        .collection(_collection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Recipe.fromFirestore(doc))
+          .where((recipe) {
+            // Convert recipe ingredients to lowercase for case-insensitive comparison
+            final recipeIngredients = recipe.ingredients
+                .map((ing) => ing.name.toLowerCase())
+                .toList();
+
+            // Check if all included ingredients are present
+            final hasAllIncluded = includedIngredients.isEmpty ||
+                includedIngredients.every((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            // Check if none of the excluded ingredients are present
+            final hasNoExcluded = excludedIngredients.isEmpty ||
+                !excludedIngredients.any((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            return hasAllIncluded && hasNoExcluded;
+          })
+          .toList();
+    });
+  }
+
+  // Combined search and filter
+  Stream<List<Recipe>> searchAndFilterRecipes(String query,
+      List<String> includedIngredients, List<String> excludedIngredients) {
+    return _firestore
+        .collection(_collection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Recipe.fromFirestore(doc))
+          .where((recipe) {
+            // Text search match
+            final matchesQuery = query.isEmpty ||
+                recipe.title.toLowerCase().contains(query.toLowerCase()) ||
+                recipe.description.toLowerCase().contains(query.toLowerCase());
+
+            // Convert recipe ingredients to lowercase for case-insensitive comparison
+            final recipeIngredients = recipe.ingredients
+                .map((ing) => ing.name.toLowerCase())
+                .toList();
+
+            // Check if all included ingredients are present
+            final hasAllIncluded = includedIngredients.isEmpty ||
+                includedIngredients.every((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            // Check if none of the excluded ingredients are present
+            final hasNoExcluded = excludedIngredients.isEmpty ||
+                !excludedIngredients.any((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            return matchesQuery && hasAllIncluded && hasNoExcluded;
+          })
+          .toList();
+    });
+  }
+
+  // Create a new recipe using RecipeModel (for admin)
+  Future<String> createRecipeModel(RecipeModel recipeModel, File? coverImage) async {
+    try {
+      String? imageUrl;
+      if (coverImage != null) {
+        // Upload cover image to Firebase Storage
+        final storageRef = _storage.ref().child(
+            'recipe_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await storageRef.putFile(coverImage);
+        imageUrl = await storageRef.getDownloadURL();
+      }
+
+      // Create recipe document with image URL
+      final recipeData = recipeModel.toMap();
+      if (imageUrl != null) {
+        recipeData['imageUrl'] = imageUrl;
+      }
+      
+      // Set timestamps
+      recipeData['createdAt'] = FieldValue.serverTimestamp();
+      recipeData['updatedAt'] = FieldValue.serverTimestamp();
+
+      final docRef = await _firestore.collection(_collection).add(recipeData);
+      
+      // Log admin action
+      await _logAdminAction('CREATE_RECIPE', {
+        'recipeId': docRef.id,
+        'title': recipeModel.title,
+        'action': 'Recipe created by admin via photo',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Failed to create recipe: $e');
+    }
   }
 }

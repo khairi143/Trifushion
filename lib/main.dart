@@ -16,6 +16,7 @@ import 'view/my_recipes/my_recipes_page.dart';
 import 'view/user/userprofilepage.dart';
 import 'view/recipe/edit_recipe_page.dart';
 import 'view_models/recipe_form_page_vm.dart';
+import 'view_models/theme_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,36 +47,71 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => RecipeFormViewModel()), 
         ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
+        ChangeNotifierProvider<ThemeViewModel>(create: (_) => ThemeViewModel()),
       ],
-      child: MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-      ),
-          scaffoldBackgroundColor: Colors.white,
-          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            backgroundColor: Colors.white,
-            selectedItemColor: Colors.green,
-            unselectedItemColor: Colors.grey,
-          ),
-        ),
-        home: const AuthWrapper(),
+      child: Consumer<ThemeViewModel>(
+        builder: (context, themeViewModel, _) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              primarySwatch: Colors.green,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.green,
+                brightness: Brightness.light,
+              ),
+              brightness: Brightness.light,
+              useMaterial3: true,
+              cardTheme: CardThemeData(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              appBarTheme: const AppBarTheme(
+                elevation: 0,
+                centerTitle: true,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+              ),
+              scaffoldBackgroundColor: Colors.white,
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: Colors.white,
+                selectedItemColor: Colors.green,
+                unselectedItemColor: Colors.grey,
+              ),
+            ),
+            darkTheme: ThemeData(
+              primarySwatch: Colors.green,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.green,
+                brightness: Brightness.dark,
+              ),
+              brightness: Brightness.dark,
+              useMaterial3: true,
+              cardTheme: CardThemeData(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                color: Colors.grey[850],
+              ),
+              appBarTheme: AppBarTheme(
+                elevation: 0,
+                centerTitle: true,
+                backgroundColor: Colors.grey[900],
+                foregroundColor: Colors.white,
+              ),
+              scaffoldBackgroundColor: Colors.grey[900],
+              bottomNavigationBarTheme: BottomNavigationBarThemeData(
+                backgroundColor: Colors.grey[850],
+                selectedItemColor: Colors.green,
+                unselectedItemColor: Colors.grey[400],
+              ),
+            ),
+            themeMode: themeViewModel.themeMode,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }

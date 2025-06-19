@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import '../../services/auth_service.dart';
 import 'edit_profile_page.dart';
 import '../login.dart';
 import 'dart:ui';
+import '../../view_models/theme_view_model.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -240,18 +242,32 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
                 child: Stack(
                   children: [
                     CircleAvatar(
-                      radius: 54,
-                      backgroundColor: Colors.orange.withOpacity(0.15),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey[300],
-                        backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
-                          ? NetworkImage(profileImageUrl)
+                      radius: 60,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: _profileImage != null
+                          ? FileImage(_profileImage!)
                           : null,
-                        child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                          ? Icon(Icons.person, size: 50, color: Colors.grey[600])
+                      child: _profileImage == null
+                          ? Icon(Icons.person, size: 50, color: Colors.white)
                           : null,
-                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Consumer<ThemeViewModel>(
+                      builder: (context, themeViewModel, _) {
+                        return ElevatedButton.icon(
+                          onPressed: themeViewModel.toggleTheme,
+                          icon: Icon(
+                            themeViewModel.isDarkMode 
+                                ? Icons.light_mode 
+                                : Icons.dark_mode,
+                          ),
+                          label: Text('${themeViewModel.currentThemeText} Theme'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

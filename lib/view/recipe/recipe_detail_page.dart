@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:chewie/chewie.dart';
 import '../../models/recipe.dart';
 import '../../view_models/recipe_detail_page_vm.dart';
+import 'step_by_step_cooking_page.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
@@ -550,6 +551,19 @@ class _RecipeDetailPageState extends State<RecipeDetailPage>
                   ],
                 ),
               ],
+            ),
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StepByStepCookingPage(recipe: recipe),
+                  ),
+                );
+              },
+              backgroundColor: Color(0xFF870C14),
+              icon: Icon(Icons.play_arrow),
+              label: Text('Cook Mode'),
             ),
           );
         },
