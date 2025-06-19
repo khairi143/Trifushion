@@ -348,4 +348,73 @@ Future<bool> userDeleteRecipe(String recipeId, String userId, String coverImageU
 
     return deletedCount;
   }
+
+  // Filter recipes by ingredients
+  Stream<List<Recipe>> filterRecipesByIngredients(
+      List<String> includedIngredients, List<String> excludedIngredients) {
+    return _firestore
+        .collection(_collection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Recipe.fromFirestore(doc))
+          .where((recipe) {
+            // Convert recipe ingredients to lowercase for case-insensitive comparison
+            final recipeIngredients = recipe.ingredients
+                .map((ing) => ing.name.toLowerCase())
+                .toList();
+
+            // Check if all included ingredients are present
+            final hasAllIncluded = includedIngredients.isEmpty ||
+                includedIngredients.every((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            // Check if none of the excluded ingredients are present
+            final hasNoExcluded = excludedIngredients.isEmpty ||
+                !excludedIngredients.any((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            return hasAllIncluded && hasNoExcluded;
+          })
+          .toList();
+    });
+  }
+
+  // Combined search and filter
+  Stream<List<Recipe>> searchAndFilterRecipes(String query,
+      List<String> includedIngredients, List<String> excludedIngredients) {
+    return _firestore
+        .collection(_collection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Recipe.fromFirestore(doc))
+          .where((recipe) {
+            // Text search match
+            final matchesQuery = query.isEmpty ||
+                recipe.title.toLowerCase().contains(query.toLowerCase()) ||
+                recipe.description.toLowerCase().contains(query.toLowerCase());
+
+            // Convert recipe ingredients to lowercase for case-insensitive comparison
+            final recipeIngredients = recipe.ingredients
+                .map((ing) => ing.name.toLowerCase())
+                .toList();
+
+            // Check if all included ingredients are present
+            final hasAllIncluded = includedIngredients.isEmpty ||
+                includedIngredients.every((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            // Check if none of the excluded ingredients are present
+            final hasNoExcluded = excludedIngredients.isEmpty ||
+                !excludedIngredients.any((ingredient) => recipeIngredients
+                    .any((ri) => ri.contains(ingredient.toLowerCase())));
+
+            return matchesQuery && hasAllIncluded && hasNoExcluded;
+          })
+          .toList();
+    });
+  }
 }

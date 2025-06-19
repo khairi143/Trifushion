@@ -5,6 +5,7 @@ import '../../services/recipe_service.dart';
 import '../../services/auth_service.dart';
 import 'recipe_detail_page.dart';
 import 'recipe_form_page.dart';
+import '../../widgets/smart_recipe_filter.dart';
 
 class RecipeListPage extends StatefulWidget {
   const RecipeListPage({Key? key}) : super(key: key);
@@ -17,6 +18,26 @@ class _RecipeListPageState extends State<RecipeListPage> {
   final _recipeService = RecipeService();
   String _searchQuery = '';
   String? _selectedCategory;
+  List<String> _includedIngredients = [];
+  List<String> _excludedIngredients = [];
+
+  Stream<List<Recipe>> _getRecipeStream() {
+    // If there is any search query or ingredient filter, use combined logic
+    if (_searchQuery.isNotEmpty ||
+        _includedIngredients.isNotEmpty ||
+        _excludedIngredients.isNotEmpty) {
+      return _recipeService.searchAndFilterRecipes(
+          _searchQuery, _includedIngredients, _excludedIngredients);
+    }
+
+    // Otherwise check category filter
+    if (_selectedCategory != null) {
+      return _recipeService.getRecipesByCategory(_selectedCategory!);
+    }
+
+    // Default: return all recipes
+    return _recipeService.getRecipes();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,16 +124,24 @@ class _RecipeListPageState extends State<RecipeListPage> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+
+          // Smart Recipe Filter
+          SmartRecipeFilter(
+            onFilterChanged: (included, excluded) {
+              setState(() {
+                _includedIngredients = List.from(included);
+                _excludedIngredients = List.from(excluded);
+              });
+            },
+          ),
+
+          const SizedBox(height: 8),
 
           // Recipe List
           Expanded(
             child: StreamBuilder<List<Recipe>>(
-              stream: _searchQuery.isNotEmpty
-                  ? _recipeService.searchRecipesUser(_searchQuery)
-                  : _selectedCategory != null
-                      ? _recipeService.getRecipesByCategory(_selectedCategory!)
-                      : _recipeService.getRecipes(),
+              stream: _getRecipeStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
