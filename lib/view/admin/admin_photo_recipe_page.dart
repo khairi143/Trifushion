@@ -7,6 +7,11 @@ import '../../models/instruction_model.dart';
 import '../../models/nutrition_model.dart';
 import '../../services/recipe_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:video_player/video_player.dart';
+import 'package:video_compress/video_compress.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AdminPhotoRecipePage extends StatefulWidget {
   const AdminPhotoRecipePage({Key? key}) : super(key: key);
@@ -161,9 +166,74 @@ class _AdminPhotoRecipePageState extends State<AdminPhotoRecipePage> {
   }
 
   void _addInstruction() {
-    setState(() {
-      _instructions.add(Instruction(stepNumber: _instructions.length + 1, description: 'New instruction', videoUrl: ''));
-    });
+    final TextEditingController instructionController = TextEditingController();
+    XFile? selectedVideo;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Add Instruction'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: instructionController,
+                    decoration: const InputDecoration(labelText: 'Step Description'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.videocam),
+                        onPressed: () async {
+                          final picker = ImagePicker();
+                          final picked = await picker.pickVideo(
+                              source: ImageSource.gallery);
+                          if (picked != null) {
+                            setState(() {
+                              selectedVideo = picked;
+                            });
+                          }
+                        },
+                      ),
+                      Text(selectedVideo != null
+                          ? "Video selected"
+                          : "No video"),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (instructionController.text.isNotEmpty) {
+                      setState(() {
+                        _instructions.add(Instruction(
+                          stepNumber: _instructions.length + 1, 
+                          description: instructionController.text,
+                          video: selectedVideo,
+                          videoUrl: selectedVideo != null ? '' : null,
+                        ));
+                      });
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text('Add'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _removeInstruction(int index) {
@@ -230,8 +300,65 @@ class _AdminPhotoRecipePageState extends State<AdminPhotoRecipePage> {
         userId: currentUser.uid,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
-        createdByName: currentUser.displayName ?? 'Admin',
+        createdByName: currentUser.email ?? 'Admin',
       );
+
+      // Upload instruction videos first
+      for (var instruction in _instructions) {
+        if (instruction.video != null && instruction.video is XFile) {
+          final xfile = instruction.video as XFile;
+
+          if (kIsWeb) {
+            final fileSize = await xfile.length();
+
+            if (fileSize > 50 * 1024 * 1024) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Video too large (max 50MB). Please compress.')),
+              );
+              continue;
+            }
+
+            final bytes = await xfile.readAsBytes();
+            final response = await supabaseUpload(
+              bucket: 'instructionvideos',
+              path:
+                  '${DateTime.now().millisecondsSinceEpoch}_${instruction.stepNumber}.mp4',
+              fileOrBytes: bytes,
+              contentType: 'video/mp4',
+            );
+
+            instruction.videoUrl = response;
+          } else {
+            final file = File(xfile.path);
+            int fileSize = await file.length();
+
+            File fileToUpload = file;
+
+            if (fileSize > 50 * 1024 * 1024) {
+              final compressed = await VideoCompress.compressVideo(
+                xfile.path,
+                quality: VideoQuality.MediumQuality,
+                deleteOrigin: false,
+              );
+
+              if (compressed != null && compressed.path != null) {
+                fileToUpload = File(compressed.path!);
+              }
+            }
+
+            final response = await supabaseUpload(
+              bucket: 'instructionvideos',
+              path:
+                  '${DateTime.now().millisecondsSinceEpoch}_${instruction.stepNumber}.mp4',
+              fileOrBytes: fileToUpload,
+              contentType: 'video/mp4',
+            );
+
+            instruction.videoUrl = response;
+          }
+        }
+      }
 
       // Save to Firestore with cover image
       final recipeId = await _recipeService.createRecipe(
@@ -797,34 +924,138 @@ class _AdminPhotoRecipePageState extends State<AdminPhotoRecipePage> {
                       itemBuilder: (context, index) {
                         final instruction = _instructions[index];
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: instruction.description,
-                                  maxLines: 3,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _instructions[index] = Instruction(
-                                        stepNumber: instruction.stepNumber,
-                                        description: value,
-                                        videoUrl: instruction.videoUrl,
-                                      );
-                                    });
-                                  },
-                                  decoration: InputDecoration(
-                                    labelText: 'Step ${instruction.stepNumber}',
-                                    border: const OutlineInputBorder(),
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Card(
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 16,
+                                        child: Text('${instruction.stepNumber}'),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Step ${instruction.stepNumber}',
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => _removeInstruction(index),
+                                        icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                      ),
+                                    ],
                                   ),
-                                ),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    initialValue: instruction.description,
+                                    maxLines: 3,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _instructions[index] = Instruction(
+                                          stepNumber: instruction.stepNumber,
+                                          description: value,
+                                          video: instruction.video,
+                                          videoUrl: instruction.videoUrl,
+                                        );
+                                      });
+                                    },
+                                    decoration: const InputDecoration(
+                                      labelText: 'Description',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Video upload section for each step
+                                  Row(
+                                    children: [
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          final picker = ImagePicker();
+                                          final picked = await picker.pickVideo(
+                                            source: ImageSource.gallery,
+                                          );
+                                          if (picked != null) {
+                                            setState(() {
+                                              _instructions[index] = Instruction(
+                                                stepNumber: instruction.stepNumber,
+                                                description: instruction.description,
+                                                video: picked,
+                                                videoUrl: '',
+                                              );
+                                            });
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Video selected for Step ${instruction.stepNumber}'),
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(Icons.videocam),
+                                        label: const Text('Add Video'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (instruction.video != null || (instruction.videoUrl != null && instruction.videoUrl!.isNotEmpty))
+                                        ElevatedButton.icon(
+                                          onPressed: () {
+                                            setState(() {
+                                              _instructions[index] = Instruction(
+                                                stepNumber: instruction.stepNumber,
+                                                description: instruction.description,
+                                                video: null,
+                                                videoUrl: null,
+                                              );
+                                            });
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Video removed from Step ${instruction.stepNumber}'),
+                                                backgroundColor: Colors.orange,
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.delete),
+                                          label: const Text('Remove Video'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (instruction.videoUrl != null && instruction.videoUrl!.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      height: 150,
+                                      child: VideoPlayerWidget(url: instruction.videoUrl!),
+                                    ),
+                                  ] else if (instruction.video != null) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.videocam, color: Colors.green),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          kIsWeb 
+                                              ? 'Video will be available after saving'
+                                              : 'Video attached',
+                                          style: TextStyle(color: Colors.green[700]),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
                               ),
-                              IconButton(
-                                onPressed: () => _removeInstruction(index),
-                                icon: const Icon(Icons.remove_circle, color: Colors.red),
-                              ),
-                            ],
+                            ),
                           ),
                         );
                       },
@@ -861,4 +1092,74 @@ class _AdminPhotoRecipePageState extends State<AdminPhotoRecipePage> {
       ),
     );
   }
-} 
+}
+
+// Video Player Widget for previewing videos
+class VideoPlayerWidget extends StatefulWidget {
+  final String url;
+  const VideoPlayerWidget({required this.url});
+  @override
+  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
+  late VideoPlayerController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _controller.value.isInitialized
+        ? AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          )
+        : Center(child: CircularProgressIndicator());
+  }
+}
+
+// Supabase upload function
+Future<String> supabaseUpload({
+  required String bucket,
+  required String path,
+  required dynamic fileOrBytes,
+  required String contentType,
+}) async {
+  if (kIsWeb) {
+    final url =
+        'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/$bucket/$path';
+    final anonKey =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNma2ltcGRucHhnaGV2Y3B4dm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2Nzk0NjAsImV4cCI6MjA2NDI1NTQ2MH0.CSBv7uodAcyco-UaoC4OFSEqQE-z9gXG0ygH49FnnpQ';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $anonKey',
+        'apikey': anonKey,
+        'Content-Type': contentType,
+        'x-upsert': 'true',
+      },
+      body: fileOrBytes,
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return 'https://sfkimpdnpxghevcpxvnj.supabase.co/storage/v1/object/public/$bucket/$path';
+    } else {
+      throw Exception('Failed to upload: ${response.body}');
+    }
+  } else {
+    // Mobile/Desktop: Use Supabase client
+    final response = await Supabase.instance.client.storage.from(bucket).upload(
+        path, fileOrBytes,
+        fileOptions: FileOptions(contentType: contentType));
+    return Supabase.instance.client.storage.from(bucket).getPublicUrl(response);
+  }
+}
