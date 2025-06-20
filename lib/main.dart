@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:another_flutter_splash_screen/another_flutter_splash_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'firebase_options.dart';
@@ -109,10 +110,26 @@ class MyApp extends StatelessWidget {
               ),
             ),
             themeMode: themeViewModel.themeMode,
-            home: const AuthWrapper(),
+            home: const SplashScreenWrapper(),
           );
         },
       ),
+    );
+  }
+}
+
+class SplashScreenWrapper extends StatelessWidget {
+  const SplashScreenWrapper({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return FlutterSplashScreen.gif(
+      useImmersiveMode: true,
+      gifPath: 'assets/gif/recipe.gif',
+      gifWidth: 269,
+      gifHeight: 474,
+      nextScreen: const AuthWrapper(),
+      duration: const Duration(milliseconds: 3515),
     );
   }
 }
