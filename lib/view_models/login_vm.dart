@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -37,6 +38,14 @@ class LoginViewModel extends ChangeNotifier {
   void setPassword(String value) {
     passwordController.text = value;
     notifyListeners();
+  }
+
+ 
+  void clearErrorMessage() {
+    if (errorMessageController.text.isNotEmpty) {
+      errorMessageController.clear();
+      notifyListeners();
+    }
   }
 
   Future<void> login(BuildContext context, VoidCallback? onAdmin,
@@ -132,29 +141,15 @@ class LoginViewModel extends ChangeNotifier {
     } catch (e) {
       if (!mounted) return;
       
-      // Enhanced error handling
+      // Unified handling of all errors
       String errorMessage = e.toString();
       
-      // Clean up error message
+      // Clean up error message format
       if (errorMessage.contains('Exception:')) {
         errorMessage = errorMessage.replaceFirst('Exception: ', '');
       }
-      if (errorMessage.contains('[firebase_auth/')) {
-        if (errorMessage.contains('user-not-found')) {
-          errorMessage = "No account found with this email address.";
-        } else if (errorMessage.contains('wrong-password')) {
-          errorMessage = "Incorrect password. Please try again.";
-        } else if (errorMessage.contains('invalid-email')) {
-          errorMessage = "Invalid email address format.";
-        } else if (errorMessage.contains('user-disabled')) {
-          errorMessage = "This account has been disabled.";
-        } else if (errorMessage.contains('too-many-requests')) {
-          errorMessage = "Too many failed attempts. Please try again later.";
-        } else {
-          errorMessage = "Login failed. Please check your credentials.";
-        }
-      }
       
+      // Ensure error message is user-friendly
       errorMessageController.text = errorMessage;
       print("Login error: $e"); // For debugging
       

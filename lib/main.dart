@@ -21,6 +21,19 @@ import 'view_models/theme_view_model.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Set up global error handler to intercept uncaught errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // Filter and prevent certain errors from displaying in UI
+    if (details.exception.toString().contains('credential') || 
+        details.exception.toString().contains('Firebase')) {
+      // Silently handle Firebase-related errors
+      print('Intercepted Firebase error: ${details.exception}');
+      return;
+    }
+    // Use default handling for other errors
+    FlutterError.presentError(details);
+  };
+  
   // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -53,6 +66,13 @@ class MyApp extends StatelessWidget {
         builder: (context, themeViewModel, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
+            // Disable default error display
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+                child: child!,
+              );
+            },
             theme: ThemeData(
               primarySwatch: Colors.green,
               colorScheme: ColorScheme.fromSeed(

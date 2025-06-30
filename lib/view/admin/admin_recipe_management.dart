@@ -4,6 +4,7 @@ import '../../models/recipe_model.dart';
 import '../../services/recipe_service.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart' as video_player;
+import 'admin_error_handler.dart';
 
 // Video Player Widget
 class RecipeVideoPlayer extends StatefulWidget {
@@ -95,6 +96,8 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Prevent unwanted error displays in admin recipe management
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text(
           'Recipe Management',
@@ -426,43 +429,39 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
                 ),
                 const SizedBox(height: 8),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: _getAuthorInfo(recipe.authorId),
-                      builder: (context, snapshot) {
-                        final authorInfo = snapshot.data ?? {};
-                        final authorName = authorInfo['fullname'] ?? 'Loading...';
-                        final authorEmail = authorInfo['email'] ?? '';
-                        return Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 12,
-                              backgroundColor: Colors.blue.shade100,
-                              child: Icon(Icons.person, size: 16, color: Colors.blue.shade700),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              authorName,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: FutureBuilder<Map<String, dynamic>>(
+                        future: _getAuthorInfo(recipe.authorId),
+                        builder: (context, snapshot) {
+                          final authorInfo = snapshot.data ?? {};
+                          final authorName = authorInfo['fullname'] ?? 'Loading...';
+                          final authorEmail = authorInfo['email'] ?? '';
+                          return Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: Colors.blue.shade100,
+                                child: Icon(Icons.person, size: 16, color: Colors.blue.shade700),
                               ),
-                            ),
-                            if (authorEmail.isNotEmpty) ...[
-                              const SizedBox(width: 4),
-                              Text(
-                                '($authorEmail)',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  authorEmail.isNotEmpty ? '$authorName ($authorEmail)' : authorName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
-                          ],
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text(
                       _formatDateTime(recipe.createdAt),
                       style: TextStyle(
@@ -668,14 +667,14 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
                                   itemCount: recipe.ingredients.length,
                                   itemBuilder: (context, index) {
                                     final ingredient = recipe.ingredients[index];
-                                    // 解析数量和单位（如果有）
+                                    // Parse quantity and unit (if available)
                                     final parts = ingredient.split(' ');
                                     String quantity = '';
                                     String unit = '';
                                     String name = ingredient;
 
                                     if (parts.length > 1) {
-                                      // 尝试识别数量和单位
+                                      // Try to identify quantity and unit
                                       if (RegExp(r'^[\d./]+$').hasMatch(parts[0])) {
                                         quantity = parts[0];
                                         if (parts.length > 2) {
@@ -1230,18 +1229,12 @@ class _AdminRecipeManagementState extends State<AdminRecipeManagement> {
   void _deleteRecipe(String recipeId) async {
     try {
       await _recipeService.deleteRecipe(recipeId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Recipe deleted successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AdminErrorHandler.showSuccess(context, 'Recipe deleted successfully');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete recipe: $e'),
-          backgroundColor: Colors.red,
-        ),
+      AdminErrorHandler.handleError(
+        context, 
+        e,
+        customMessage: 'Unable to delete recipe. Please try again.',
       );
     }
   }

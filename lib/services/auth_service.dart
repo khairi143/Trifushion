@@ -28,10 +28,46 @@ class AuthService extends ChangeNotifier {
       final cred = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
       return cred.user;
-    } catch (e) {
-      log("Something went wrong");
+    } on FirebaseAuthException catch (e) {
+      // Log specific Firebase authentication error
+      log("Firebase Auth Error - Code: ${e.code}, Message: ${e.message}");
+      
+      // Completely prevent Firebase errors from propagating to UI, re-throw our custom exception
+      String customMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          customMessage = 'No account found with this email address.';
+          break;
+        case 'wrong-password':
+          customMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'invalid-email':
+          customMessage = 'Invalid email address format.';
+          break;
+        case 'user-disabled':
+          customMessage = 'This account has been disabled.';
+          break;
+        case 'too-many-requests':
+          customMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'invalid-credential':
+          customMessage = 'Invalid email or password. Please check your credentials.';
+          break;
+        default:
+          customMessage = 'Login failed. Please check your email and password.';
+      }
+             
+       // Throw custom exception instead of Firebase exception
+       throw Exception(customMessage);
+     } catch (e) {
+       log("Unexpected error during login: $e");
+       // Ensure all errors are converted to our custom exceptions
+      if (e is Exception) {
+        rethrow;
+      } else {
+        throw Exception("An unexpected error occurred. Please try again.");
+      }
     }
-    return null;
   }
 
   // Function to clear login information when signing out

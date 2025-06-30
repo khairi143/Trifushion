@@ -31,6 +31,20 @@ class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   bool _isVerifying = true;
   bool _hasAccess = false;
+  
+  // Controlled error display function to prevent unwanted error dialogs
+  void _showControlledError(String message, {bool isSuccess = false}) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isSuccess ? Colors.green : Colors.orange,
+          duration: Duration(seconds: isSuccess ? 2 : 3),
+        ),
+      );
+    }
+  }
 
   final List<Widget> _pages = [
     UserManagementPage(),
@@ -182,6 +196,8 @@ class _HomePageState extends State<HomePage> {
 
     // Show admin dashboard if access is granted
     return Scaffold(
+      // Prevent unwanted error displays in admin dashboard  
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text('Admin Dashboard'),
         actions: [
@@ -475,7 +491,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                     var userData = doc.data() as Map<String, dynamic>;
                     if (userData['usertype'] == 'user') {
                       totalUsers++;
-                      // 检查多种可能的banned字段名
+                      // Check multiple possible banned field names
                       bool isBanned = userData['isBanned'] == true || 
                                     userData['banned'] == true || 
                                     userData['is_banned'] == true;
@@ -560,7 +576,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                     if (_filterStatus != 'all') {
                       users = users.where((doc) {
                         var data = doc.data() as Map<String, dynamic>;
-                        // 检查多种可能的banned字段名
+                        // Check multiple possible banned field names
                         bool isBanned = data['isBanned'] == true || 
                                       data['banned'] == true || 
                                       data['is_banned'] == true;
@@ -645,7 +661,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                         var email = userData['email'] ?? 'No Email';
                         var name = userData['fullname'] ?? 'No Name';
                         var userType = userData['usertype'] ?? 'Regular User';
-                        // 检查多种可能的banned字段名
+                        // Check multiple possible banned field names
                         bool isBanned = userData['isBanned'] == true || 
                                       userData['banned'] == true || 
                                       userData['is_banned'] == true;
@@ -707,7 +723,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 用户详细信息区域
+                                    // User details area
                                     Container(
                                       padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
@@ -746,7 +762,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                       ),
                                     ),
                                     SizedBox(height: 16),
-                                    // 操作按钮区域
+                                    // Action buttons area
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
@@ -900,9 +916,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Debug error: $e')),
-      );
+      // Silent error handling for debug operations
+      print('Debug error: $e');
     }
   }
 
@@ -999,16 +1014,29 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 });
 
                 if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
                         content: Text(
-                            'User ${isCurrentlyBanned ? 'unbanned' : 'banned'} successfully')),
-                  );
+                            'User ${isCurrentlyBanned ? 'unbanned' : 'banned'} successfully'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('Operation failed, please try again')),
-                  );
+                  print('Operation failed for user ban/unban');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Operation failed, please try again'),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(

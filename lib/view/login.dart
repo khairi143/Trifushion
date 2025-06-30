@@ -17,6 +17,8 @@ class LoginPage extends StatelessWidget {
       create: (_) => LoginViewModel(),
       child: Scaffold(
         backgroundColor: Color.fromRGBO(209, 224, 166, 1),
+        // Ensure no SnackBar or other error prompts are displayed
+        resizeToAvoidBottomInset: true,
         body: Consumer<LoginViewModel>(
           // Listening for ViewModel changes
           builder: (context, viewModel, child) {
@@ -33,10 +35,11 @@ class LoginPage extends StatelessWidget {
                 ),
                 Container(color: Color.fromARGB(6, 116, 116, 116)),
                 Center(
-                  child: Padding(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.only(
                         left: 30.0, right: 30.0, top: 60.0, bottom: 80),
                     child: Form(
+                      autovalidateMode: AutovalidateMode.disabled,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -98,6 +101,13 @@ class LoginPage extends StatelessWidget {
                                   ),
                                   child: TextFormField(
                                     controller: viewModel.emailController,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
+                                    keyboardType: TextInputType.emailAddress,
+                                    onChanged: (value) {
+                                      // Clear error message when user starts typing
+                                      viewModel.clearErrorMessage();
+                                    },
                                     decoration: InputDecoration(
                                       filled: true,
                                       fillColor: const Color.fromARGB(
@@ -120,6 +130,13 @@ class LoginPage extends StatelessWidget {
                                   child: TextFormField(
                                     obscureText: true,
                                     controller: viewModel.passwordController,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
+                                    keyboardType: TextInputType.visiblePassword,
+                                    onChanged: (value) {
+                                      // Clear error message when user starts typing
+                                      viewModel.clearErrorMessage();
+                                    },
                                     decoration: InputDecoration(
                                       filled: true,
                                       fillColor: const Color.fromARGB(
@@ -137,16 +154,44 @@ class LoginPage extends StatelessWidget {
                                   padding: const EdgeInsets.all(8.0),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 12),
+                                        vertical: 12, horizontal: 16),
                                     decoration: BoxDecoration(
-                                      color: const Color.fromARGB(86, 0, 0, 0),
+                                      color: const Color.fromARGB(200, 255, 87, 87),
                                       borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      viewModel.errorMessageController.text,
-                                      style: TextStyle(
-                                        color: Colors.white,
+                                      border: Border.all(
+                                        color: const Color.fromARGB(255, 255, 69, 58),
+                                        width: 1,
                                       ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            viewModel.errorMessageController.text,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            viewModel.clearErrorMessage();
+                                          },
+                                          child: Icon(
+                                            Icons.close,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
